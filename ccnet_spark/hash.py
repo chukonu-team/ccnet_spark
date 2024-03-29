@@ -149,16 +149,27 @@ HASH_SIZE = HASH_TYPE(0).nbytes
 #         count=len(lines),
 #     )
 #     return np.ndarray(dtype=HASH_TYPE, buffer=hashes.data, shape=hashes.shape)
-def compute_hashes(content) -> Optional[np.ndarray]:
-    if not content:
+# def compute_hashes(content) -> Optional[np.ndarray]:
+#     if not content:
+#         return None
+#     lines = content.split("\n")  # 按换行分割内容
+#     hashes = []
+#     for l in lines:
+#         # 这里假设 normalize_for_dedup 函数已经定义好，用于处理 l
+#         normalized_line = normalize_for_dedup(l)
+#         # 计算 SHA-1 哈希值，并截取前 HASH_SIZE 个字节
+#         line_hash = hashlib.sha1(bytes(normalized_line, encoding="utf-8")).digest()[:HASH_SIZE]
+#         hashes.append(line_hash)
+#     # 将列表转换为 NumPy 数组
+#     return np.array(hashes, dtype=np.uint64)
+
+def compute_hashes(line):
+    if not line:
         return None
-    lines = content.split("\n")  # 按换行分割内容
-    hashes = []
-    for l in lines:
-        # 这里假设 normalize_for_dedup 函数已经定义好，用于处理 l
-        normalized_line = normalize_for_dedup(l)
-        # 计算 SHA-1 哈希值，并截取前 HASH_SIZE 个字节
-        line_hash = hashlib.sha1(bytes(normalized_line, encoding="utf-8")).digest()[:HASH_SIZE]
-        hashes.append(line_hash)
+    # 这里假设 normalize_for_dedup 函数已经定义好，用于处理 l
+    normalized_line = normalize_for_dedup(l)
+    # 计算 SHA-1 哈希值，并截取前 HASH_SIZE 个字节
+    line_hash = hashlib.sha1(bytes(normalized_line, encoding="utf-8")).digest()[:HASH_SIZE]
     # 将列表转换为 NumPy 数组
-    return np.array(hashes, dtype=np.uint64)
+    return line_hash
+
