@@ -1,4 +1,6 @@
-# 1. 导入依赖
+# ccnet spark pipeline 实现
+
+## 1. 导入依赖
 
 
 
@@ -10,6 +12,7 @@ import pandas as pd
 import os
 from pyspark.sql import SparkSession
 from pyspark.sql.types import ArrayType, StringType,IntegerType,StructType, StructField
+from pyspark.sql import functions as F
 from pyspark.sql.functions import udf, explode
 from pyspark.sql.functions import sum as spark_sum
 
@@ -17,13 +20,14 @@ from pyspark.sql.functions import sum as spark_sum
 spark = SparkSession.builder.appName("CCNETSpark")  \
                     .config("spark.executor.memory", "110g") \
                     .config("spark.driver.memory", "32g") \
-                    .config("spark.driver.maxResultSize", "32g") \
+                    .config("spark.driver.maxResultSize", "10g") \
                     .getOrCreate()
 # spark
 
-# 2. 读取文件数据，处理成pandas DataFrame
 
-## 2.1 获取cache文件路径
+## 2. 读取文件数据，处理成pandas DataFrame
+
+### 2.1 获取cache文件路径
 
 
 
@@ -36,7 +40,8 @@ def getWETURL(segment: int):
 url = getWETURL(3)
 print(url)  # Output: CC-MAIN-20190215183319-20190215205319-00003.warc.wet.gz
 
-## 2.2 处理文件，存入pandas DataFrame
+
+### 2.2 处理文件，存入pandas DataFrame
 
 
 
@@ -46,13 +51,14 @@ def getpdf(segment,isPart:bool):
     s=time.time()
     pandas_df = parse_warc_file(file, 30)
     if(isPart):
-        random_save_n=1000
+        random_save_n=100
         pandas_df = pandas_df.sample(n=random_save_n, random_state=1)
     e=time.time()
     print(f"====== parse segment:{segment} to pd_df consume:{e-s} s")
     return pandas_df
 
-# 3. 读取 spark dataframe 文件
+
+## 3. 读取 spark dataframe 文件
 
 
 
@@ -80,24 +86,71 @@ def getsdfs(segments,isPart:bool = False):
             merged_sdf = getsdf(seg,isPart)
     return merged_sdf
 
-
-## 3.1 load spark DataFrame
-
+### 3.1 load spark DataFrame
 
 
-segments=[i for i in range(40)]
-isPart=False
+
+def getModePara(mode):
+    if(mode=="test"):
+        para={
+            "isTest":True,
+            "isPart":True,
+            "segments":5,
+        }
+        return para
+    else:
+        para={
+            "isTest":False,
+            "isPart":False,
+            "segments":10,
+        }
+        return para
+
+
+
+mode="dev"
+mode_para=getModePara(mode)
+segments=[i for i in range(mode_para["segments"])]
+isPart=mode_para["isPart"]
+
+
+
 s=time.time()
 spark_df = getsdfs(segments,isPart=isPart)
 num_docs=spark_df.count()
 e=time.time()
 print(f"load {len(segments)} segments,with {num_docs} docs,comsume:{e-s}s")
 
+
                                                                                     
 
-# 4. hash计算
+### 3.2 字段分析
+"""
+1. wet 文件本身带有长度："length": length,这个是从wet的"Content-Length:"读出来的，和我计算len(raw_content）有出入。考虑是原先的length,不只是raw_content，还包括title等。
+"""
 
-## 4.1 定义UDF,将doc 分割成paragraph 
+
+
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    s=time.time()
+    print(spark_df.summary())
+    tmp_df = spark_df.withColumn("compute_length", F.length(spark_df["raw_content"]))
+    tmp_df.select("url","length","nlines","compute_length").show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
+
+
+### 3.3 修改length
+
+
+
+spark_df=spark_df.withColumn("length", F.length(spark_df["raw_content"]))
+
+
+## 4. hash计算
+
+### 4.1 定义UDF,将doc 分割成paragraph 
 
 
 
@@ -114,22 +167,28 @@ split_udf = udf(split_raw_content, ArrayType(StructType([
 ])))
 
 
-## 4.2 udf 处理添加新字段
+### 4.2 udf 处理添加新字段
 
 
 
 # 假设spark_df是您的DataFrame
 # 使用UDF对raw_content字段进行处理
 split_result = spark_df.withColumn("split_content", split_udf(spark_df["raw_content"]))
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    s=time.time()
+    print(split_result.summary())
+    split_result.select("url","length","nlines","raw_content","split_content").show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
 
 
-## 4.3 将新字段展开获取paragraph级别row
+### 4.3 将新字段展开获取paragraph级别row
 
 
 
 # Explode the split_content column and select the desired columns
-s=time.time()
-exploded_df = split_result.select("url","length","nlines","title", explode(split_result.split_content).alias("exploded_content"))
+exploded_df = split_result.select("url","date_download","digest","length","nlines","source_domain","title","raw_content", explode(split_result.split_content).alias("exploded_content"))
 
 # Split the exploded_content struct into separate columns
 exploded_df = exploded_df.withColumn("raw_line_id", exploded_df.exploded_content.raw_line_id)
@@ -138,11 +197,18 @@ exploded_df = exploded_df.withColumn("raw_line", exploded_df.exploded_content.ra
 # Drop the exploded_content column if needed
 exploded_df = exploded_df.drop("exploded_content")
 
-e=time.time()
-print(f"get row id & line time consume:{e-s}s")
+if(mode_para["isTest"]):
+    exploded_df.cache()
+    print("=== TestMode Log:")
+    s=time.time()
+    print(exploded_df.summary())
+    exploded_df.select("url","raw_content","raw_line_id","raw_line").show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
 
 
-## 4.5 添加hash 列
+
+### 4.4 添加hash 列
 
 
 
@@ -153,7 +219,7 @@ from ccnet_spark import normalize_for_dedup
 from typing import Iterable, Iterator, Sequence, Sized, Tuple, Type
 HASH_TYPE: Type[np.uint64] = np.uint64
 HASH_SIZE = HASH_TYPE(0).nbytes 
-print(f"HASH_SIZE:{HASH_SIZE}") # 8
+print(f"HASH_SIZE:{HASH_SIZE}") # 8 Byte ==> 64bit
 @udf(returnType=BinaryType())
 def compute_hashes(line):
     if not line:
@@ -166,32 +232,80 @@ def compute_hashes(line):
 hash_df = exploded_df.withColumn("hash_value", compute_hashes(exploded_df.raw_line))
 
 # Show the resulting dataframe
-# hash_df.show()
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    s=time.time()
+    print(hash_df.summary())
+    hash_df.show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
 
 
-## 4.5根据 hash 去重
+### 4.5根据 hash 去重
 
+
+
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    s=time.time()
+    from pyspark.sql import functions as F
+    tmp_df = spark_df.withColumn("compute_length", F.length(spark_df["raw_content"]))
+    tmp_df.select("url","length","nlines","compute_length").show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
 
 
 deduplicated_df = hash_df.dropDuplicates(['hash_value'])
+# Show the resulting dataframe
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    deduplicated_df.cache()
+    s=time.time()
+    print(deduplicated_df.summary())
+    deduplicated_df.select("url","length","nlines","raw_content","raw_line_id","hash_value").show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
 
 
-## 4.6 更新字符长度
+                                                                                    
+
+### 4.6 聚合
+#将段落重新聚合为doc
 
 
 
-from pyspark.sql.functions import length
+from pyspark.sql import functions as F
 
-# 使用 length() 函数计算字符数量，并将结果存储在新列 new_length 中
-deduplicated_df = deduplicated_df.withColumn('length', length(deduplicated_df['raw_line']))
+"url","date_download","digest","length","nlines","source_domain","title","raw_content",
+group_df = deduplicated_df.groupBy("digest").agg(
+    F.first("url").alias("url"),
+    F.first("date_download").alias("date_download"),
+    F.first("source_domain").alias("source_domain"),
+    F.first("length").alias("original_length"),
+    F.first("nlines").alias("original_nlines"),
+    F.first("title").alias("title"),
+    F.concat_ws("\n", F.collect_list("raw_line").alias("raw_content")).alias("raw_content"),
+    F.count("raw_line_id").alias("nlines"),
+    F.collect_list("raw_line_id").alias("line_ids"),
+)
+group_df=group_df.withColumn("length", F.length(group_df["raw_content"]))
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    group_df.cache()
+    s=time.time()
+    group_df.select("url","original_length","original_nlines","raw_content","length","nlines").show(5)
+    e=time.time()
+    print(f"time consume:{e-s}s")
+
+                                                                                    
+
+### 4.7 计算留存比例
 
 
-## 4.6 计算留存比例
 
-
-
-origin_chars = spark_df.agg(spark_sum("length")).collect()[0][0]
-remain_chars = deduplicated_df.agg(spark_sum("length")).collect()[0][0]
-print(f"origin chars:{origin_chars/1000/1000}M,remain_chars:{remain_chars/1000/1000}M \n \
-        keep chars:{round(remain_chars/origin_chars*100,3)} %")
-
+if(mode_para["isTest"]):
+    print("=== TestMode Log:")
+    origin_chars = spark_df.agg(spark_sum("length")).collect()[0][0]
+    remain_chars = group_df.agg(spark_sum("length")).collect()[0][0]
+    print(f"origin chars:{origin_chars/1000/1000}M,remain_chars:{remain_chars/1000/1000}M \n \
+            keep chars:{round(remain_chars/origin_chars*100,3)} %")
