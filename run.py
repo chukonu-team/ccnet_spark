@@ -104,7 +104,7 @@ def getModePara(mode):
         para={
             "isTest":False,
             "isPart":False,
-            "segments":10,
+            "segments":20,
         }
         return para
 
