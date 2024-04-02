@@ -107,10 +107,11 @@ def group_by_docs(warc_lines: Iterable[str]) -> Iterable[dict]:
             yield parsed
 
 
-def parse_warc_file(lines: Iterable[str], min_len: int = 1) -> Iterator[pd.DataFrame]:
+def parse_warc_file(lines: Iterable[str],segment:int = 0, min_len: int = 1) -> Iterator[pd.DataFrame]:
     docs_data = []  # 用于存储解析后的文档数据
     for doc in group_by_docs(lines):
         if doc and len(doc["raw_content"]) >= min_len:
+            doc["cc_segment"] = str(segment)
             docs_data.append(doc)
 
     if docs_data:
@@ -145,7 +146,7 @@ def load_segment2pdf(
     sampleRate: float = 0.1,
     min_len: int = 30,
 ):
-    samplePath = "_sampleRate_" + str(int(sampleRate if isSample * 100 else 100))
+    samplePath = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100))
     output_path = (
         cache_folder
         + "/cache_pdf_parquet/"
@@ -162,7 +163,7 @@ def load_segment2pdf(
             segment=segment, cache_folder=cache_folder, date=date
         )
         segmentFile = open_read(segmentPath)
-        pandas_df = parse_warc_file(segmentFile, min_len=min_len)
+        pandas_df = parse_warc_file(segmentFile,segment, min_len=min_len)
         if isSample:
             sampleCount = int(sampleRate * len(pandas_df))
             pandas_df = pandas_df.sample(n=sampleCount, random_state=1)
@@ -184,7 +185,7 @@ def load_segment2sdf(
     sampleRate: float = 0.1,
     min_len: int = 30,
 ):
-    samplePath = "_sampleRate_" + str(int(sampleRate if isSample * 100 else 100))
+    samplePath = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100))
     output_path = (
         cache_folder
         + "/cache_sdf_parquet/"
