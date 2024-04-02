@@ -13,7 +13,7 @@
 
 ## 使用
 
-打开 `spark_pipeline.ipynb`执行
+打开 `spark_pipeline.ipynb`执行,大部分参数都hardcode了，设置mode来决定是小数据测试，还是大数据测试。
 
 ## 一些问题
 
