@@ -27,3 +27,7 @@
 然后论文中说一个shard进行去重，chars保留42%,这个spark测试发现若与content_length比较，则只有`35%`,因此重新计算len(raw_content)作为`length`，最终统计留存比例是去重前后的raw_content，然后测试发现留存比较`keep chars:46.597 %`,此外还设有min_len参数，这个是过滤掉文档长度<min_len的，因此设置不同的参数，显然会导致结果巨大差异。
 
 [^1]: [Efficient UDFs on Databricks with unpickleable objects](https://dcferreira.com/post/2022-03-spark-serialization/)
+
+## 评估
+
+- 4个segment，使用pyspark ccnet pipeline（从读数据到写数据）耗时：5min

@@ -14,30 +14,35 @@ from pyspark.sql.functions import sum as spark_sum
 
 # 初始化 SparkSession
 spark = SparkSession.builder.appName("CCNETSpark")  \
-                    .config("spark.executor.memory", "100g") \
+                    .config("spark.executor.memory", "64g") \
                     .config("spark.driver.memory", "32g") \
                     .config("spark.driver.maxResultSize", "32g") \
                     .config('spark.sql.execution.arrow.pyspark.enabled', 'true') \
                     .getOrCreate()
 def getModePara(mode):
     if(mode=="test"):
+        n_segments=10
         cache_folder="/root/wxl_folder/cache_data/"
         date="2019-09" ## hardcode ,现在只能是这个
-        segments=[i for i in range(10)]
+        segments=[i for i in range(n_segments)]
         min_len=300
         isSample=True
         sampleRate=0.01
+        num_partitions=1
     else:
+        n_segments=4
         cache_folder="/root/wxl_folder/cache_data/"
         date="2019-09" ## hardcode ,现在只能是这个
-        segments=[i for i in range(10)]
+        segments=[i for i in range(n_segments)]
         min_len=300
-        isSample=True
-        sampleRate=0.01
-    return [cache_folder,date,segments,min_len,isSample,sampleRate]
-mode="test"
-cache_folder,date,segments,min_len,isSample,sampleRate=getModePara(mode)
+        isSample=False
+        sampleRate=1
+        num_partitions=4
+    return [cache_folder,date,segments,min_len,isSample,sampleRate,num_partitions]
+mode="dev"
+cache_folder,date,segments,min_len,isSample,sampleRate,num_partitions=getModePara(mode)
 spark_df=load_segments(spark,segments,cache_folder,date=date,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
+# spark_df = spark_df.repartition(num_partitions, "cc_segment")  # 使用哈希分区，"column_name" 是分区键
 spark_df=spark_df.withColumn("length", F.length(spark_df["raw_content"]))
 split_result = spark_df.withColumn("split_content", split_doc2para(spark_df["raw_content"]))
 exploded_df=split_result.withColumn("exploded_content", explode(split_result.split_content))
