@@ -1,7 +1,7 @@
 from ccnet_spark.text_normalizer import normalize
 from ccnet_spark.pipe_preprocess import load_segments
 from ccnet_spark.pipe_hash import compute_hashes,split_doc2para
-from ccnet_spark.pipe_lid import predictLang,predictScore
+from ccnet_spark.pipe_lid import predictLang
 from ccnet_spark.pipe_tokenized import doSentencePiece
 from ccnet_spark.pipe_perplexity import doDocLM
 from ccnet_spark.pipe_ppbucket import doPPBucket
@@ -59,8 +59,10 @@ group_df = deduplicated_df.groupBy("digest").agg(
     F.collect_list("raw_line_id").alias("line_ids"),
 )
 group_df=group_df.withColumn("length", F.length(group_df["raw_content"]))
-lang_df = group_df.withColumn("lang", predictLang("raw_content"))
-lang_df = lang_df.withColumn("score", predictScore("raw_content"))
+lang_df = group_df.withColumn("lang_score", predictLang("raw_content"))
+lang_df = lang_df.withColumn("lang", lang_df.lang_score.lang) \
+                         .withColumn("score", lang_df.lang_score.score) \
+                         .drop("lang_score")
 lm_df = lang_df.withColumn("tokenized", doSentencePiece("raw_content","lang"))
 doclm_df = lm_df.withColumn("perplexity", doDocLM("tokenized","lang"))
 bucket_df = doclm_df.withColumn("bucket", doPPBucket("perplexity","lang"))

@@ -1,6 +1,10 @@
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType, FloatType
 from cachetools import cached  ### model 缓存
+from pyspark.sql.types import (
+    StructType,
+    StructField,
+)
 import fasttext  # type: ignore
 
 
@@ -17,27 +21,22 @@ def predict(model, text: str, k: int = 1):
     return labels, scores
 
 
-@udf(returnType=StringType())
+# 定义一个函数，用于分割文本
+@udf(
+    StructType(
+        [
+            StructField("lang", StringType(), True),
+            StructField("score", FloatType(), True),
+        ]
+    )
+)
 def predictLang(text):
     if not text:
-        return None
+        return None, None
     labels, scores = predict(getFastTextModel(), text.replace("\n", ""), k=1)
     scores.round(2, out=scores)
     lang = labels[0]
     score = scores[0]
     if score < 0.5:
-        return None
-    return lang
-
-
-@udf(returnType=FloatType())
-def predictScore(text):
-    if not text:
-        return None
-    labels, scores = predict(getFastTextModel(), text.replace("\n", ""), k=1)
-    scores.round(2, out=scores)
-    lang = labels[0]
-    score = scores[0]
-    if score < 0.5:
-        return None
-    return float(score)
+        return None, None
+    return lang, float(score)
