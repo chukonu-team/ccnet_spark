@@ -14,7 +14,7 @@ from pyspark.sql.functions import sum as spark_sum
 
 # 初始化 SparkSession
 spark = SparkSession.builder.appName("CCNETSpark")  \
-                    .config("spark.executor.memory", "64g") \
+                    .config("spark.executor.memory", "100g") \
                     .config("spark.driver.memory", "32g") \
                     .config("spark.driver.maxResultSize", "32g") \
                     .config('spark.sql.execution.arrow.pyspark.enabled', 'true') \
@@ -42,14 +42,11 @@ def getModePara(mode):
 mode="dev"
 cache_folder,date,segments,min_len,isSample,sampleRate,num_partitions=getModePara(mode)
 spark_df=load_segments(spark,segments,cache_folder,date=date,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
-# spark_df = spark_df.repartition(num_partitions, "cc_segment")  # 使用哈希分区，"column_name" 是分区键
 spark_df=spark_df.withColumn("length", F.length(spark_df["raw_content"]))
 split_result = spark_df.withColumn("split_content", split_doc2para(spark_df["raw_content"]))
-exploded_df=split_result.withColumn("exploded_content", explode(split_result.split_content))
-exploded_df = exploded_df.withColumn("raw_line_id", exploded_df.exploded_content.raw_line_id) \
-                         .withColumn("raw_line", exploded_df.exploded_content.raw_line) \
-                         .drop("exploded_content")
-hash_df = exploded_df.withColumn("hash_value", compute_hashes(exploded_df.raw_line))
+exploded_df=split_result.withColumn("exploded_content", explode(split_result.split_content)) \
+                        .drop("split_content")
+hash_df = exploded_df.withColumn("hash_value", compute_hashes(exploded_df.exploded_content.raw_line))
 deduplicated_df = hash_df.dropDuplicates(['hash_value'])
 group_df = deduplicated_df.groupBy("digest").agg(
     F.first("url").alias("url"),
@@ -59,11 +56,12 @@ group_df = deduplicated_df.groupBy("digest").agg(
     F.first("length").alias("original_length"),
     F.first("nlines").alias("original_nlines"),
     F.first("title").alias("title"),
-    F.concat_ws("\n", F.collect_list("raw_line").alias("raw_content")).alias("raw_content"),
-    F.count("raw_line_id").alias("nlines"),
-    F.collect_list("raw_line_id").alias("line_ids"),
+    F.count("exploded_content.raw_line_id").alias("nlines"),
+    F.sort_array(F.collect_list("exploded_content")).alias("exploded_content")
 )
-group_df=group_df.withColumn("length", F.length(group_df["raw_content"]))
+group_df = group_df.withColumn("raw_content", F.concat_ws("\n", "exploded_content.raw_line")) 
+group_df = group_df.withColumn("raw_line_id", group_df.exploded_content.raw_line_id) 
+group_df = group_df.withColumn("length", F.length("raw_content")).drop("exploded_content")
 lang_df = group_df.withColumn("lang_score", predictLang("raw_content"))
 lang_df = lang_df.withColumn("lang", lang_df.lang_score.lang) \
                          .withColumn("score", lang_df.lang_score.score) \
