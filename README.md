@@ -30,4 +30,5 @@
 
 ## 评估
 
-- 4个segment，使用pyspark ccnet pipeline（从读数据到写数据）耗时：5min
+- 4个segment,使用pyspark ccnet pipeline（从读数据到写数据）耗时：5min,内存峰值60GB，取决于参数配置`spark.executor.memory", "64g"`
+- 4个segment,使用ccnet pipeline（从读数据到写数据）耗时：时间差不多，但是本地测试发现任务调度有问题，有点job似乎失败了然后一直卡住不停止，也不重试（设置了较大的超时时间）
