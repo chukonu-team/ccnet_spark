@@ -30,5 +30,42 @@
 
 ## 评估
 
+测试参数：使用2019-09 前4个segment，min_len=300
+
 - 4个segment,使用pyspark ccnet pipeline（从读数据到写数据）耗时：5min,内存峰值60GB，取决于参数配置`spark.executor.memory", "64g"`
 - 4个segment,使用ccnet pipeline（从读数据到写数据）耗时：时间差不多，但是本地测试发现任务调度有问题，有点job似乎失败了然后一直卡住不停止，也不重试（设置了较大的超时时间）
+- ccnet 保留的doc 数量更少，但是分到head的比ccnet_spark 多
+
+### ccnet
+
+使用prue ccnet 获得最后的doc 数如下
+
+- segment 1:
+    all:37470
+    zh_head:292
+    zh_middle:390
+    zh_tail:1410
+    en_tail:11743
+    en_head:1360
+    en_middle:2526
+- segment 2:
+    all:38284
+- segment 3:
+    all:38046
+
+### ccnet_spark
+
+使用ccnet_spark 获得最后的doc 数如下
+
+- segment 1:
+    all:41413
+    zh_head:233
+    zh_middle:383
+    zh_tail:1502
+    en_tail:12711
+    en_head:1000
+    en_middle:2239
+- segment 2:
+    all:42100
+- segment 3:
+    all:41456
