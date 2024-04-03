@@ -7,6 +7,7 @@ from ccnet_spark.pipe_perplexity import doDocLM
 from ccnet_spark.pipe_ppbucket import doPPBucket
 from ccnet_spark.pipe_save import save_partation,load_partation
 import time
+from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.functions import explode
@@ -47,7 +48,10 @@ split_result = spark_df.withColumn("split_content", split_doc2para(spark_df["raw
 exploded_df=split_result.withColumn("exploded_content", explode(split_result.split_content)) \
                         .drop("split_content")
 hash_df = exploded_df.withColumn("hash_value", compute_hashes(exploded_df.exploded_content.raw_line))
-deduplicated_df = hash_df.dropDuplicates(['hash_value'])
+# deduplicated_df = hash_df.dropDuplicates(['hash_value'])
+duplicate_counts = hash_df.groupBy("hash_value").count().where(col("count") > 1)
+# 根据重复行的信息，使用 filter 过滤掉重复行
+deduplicated_df = hash_df.join(duplicate_counts, on="hash_value", how="left_anti")
 group_df = deduplicated_df.groupBy("digest").agg(
     F.first("url").alias("url"),
     F.first("date_download").alias("date_download"),
