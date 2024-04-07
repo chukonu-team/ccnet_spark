@@ -37,8 +37,8 @@ class Config(NamedTuple):
     """
 
     dump: str = "2019-09"
-    data_dir: str = "/root/wxl_folder/cache_data/"
-    output_dir: str = "/root/wxl_folder/cache_data/"
+    cache_dir: str = "../cache_data/"
+    output_dir: str = "../cache_data/"
     min_len: int = 300
     isSample: bool = False
     sampleRate: float = 0.01
@@ -58,7 +58,7 @@ class Pipeline:
     def __init__(self, config: Config):
         #### loaded from config
         self.dump = config.dump
-        self.data_dir = config.data_dir
+        self.cache_dir = config.cache_dir
         self.output_dir: config.output_dir
         self.min_len = config.min_len
         self.isSample = config.isSample
@@ -73,8 +73,8 @@ class Pipeline:
         spark_df = load_segments(
             self.spark,
             self.segments,
-            self.data_dir,
-            date=self.dump,
+            self.cache_dir,
+            dump=self.dump,
             isSample=self.isSample,
             sampleRate=self.sampleRate,
             min_len=self.min_len,

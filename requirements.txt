@@ -2,3 +2,5 @@ fasttext
 sentencepiece
 kenlm @ git+https://github.com/kpu/kenlm.git@master
 cachetools
+pyarrow
+tqdm
