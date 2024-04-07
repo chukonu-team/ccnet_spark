@@ -7,10 +7,9 @@ from pyspark.sql.types import (
 )
 import fasttext  # type: ignore
 
-
+model_path = "/Users/zz/github/cc_net/bin/lid.bin"
 @cached(cache={})
 def getFastTextModel():
-    model_path = "models/fasttext/lid.bin"
     fasttext_model = fasttext.load_model(model_path)
     return fasttext_model
 

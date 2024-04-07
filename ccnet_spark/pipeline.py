@@ -59,7 +59,7 @@ class Pipeline:
         #### loaded from config
         self.dump = config.dump
         self.cache_dir = config.cache_dir
-        self.output_dir: config.output_dir
+        self.output_dir= config.output_dir
         self.min_len = config.min_len
         self.isSample = config.isSample
         self.sampleRate = config.sampleRate
@@ -146,4 +146,6 @@ class Pipeline:
             elif pipeline == "drop":
                 self.df = self.df.drop("tokenized")
     def save_data(self):
-        save_partation(self.df,self.data_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
+        save_partation(self.df,self.output_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
+    def load_partation_data(self,lang,bucket):
+        return load_partation(self.spark,lang,bucket,self.output_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
