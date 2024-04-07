@@ -11,7 +11,7 @@ from .pipe_lid import predictLang
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation,load_partation
+from .pipe_save import save_partation,load_partation,analy_df
 DEFAULT_PIPELINE = [
     "real_len",
     "hash",
@@ -79,6 +79,7 @@ class Pipeline:
             sampleRate=self.sampleRate,
             min_len=self.min_len,
         )
+        self.origin_df=spark_df
         self.df = spark_df
         return spark_df
 
@@ -133,7 +134,7 @@ class Pipeline:
                     "exploded_content"
                 )
             elif pipeline == "lid":
-                lang_df = group_df.withColumn("lang_score", predictLang("raw_content"))
+                lang_df = self.df.withColumn("lang_score", predictLang("raw_content"))
                 self.df = lang_df.withColumn("lang", lang_df.lang_score.lang) \
                                 .withColumn("score", lang_df.lang_score.score) \
                                 .drop("lang_score")
@@ -149,3 +150,5 @@ class Pipeline:
         save_partation(self.df,self.output_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
     def load_partation_data(self,lang,bucket):
         return load_partation(self.spark,lang,bucket,self.output_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
+    def analy(self):
+        analy_df(self.df)

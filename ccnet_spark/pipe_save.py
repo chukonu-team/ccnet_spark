@@ -1,5 +1,5 @@
 import os
-
+from pyspark.sql import functions as F
 from .pipe_preprocess import convert_to_absolute_path
 def save_partation(
     spark_df,
@@ -51,3 +51,21 @@ def load_all(
         os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
     df = spark.read.parquet(f"file:///{saved_sdf_path}")
     return df
+def analy_df(df):
+    # 定义聚合函数求和
+    sum_columns = [
+        F.sum('original_length').alias('sum_original_length'),
+        F.sum('length').alias('sum_length'),
+        F.sum('nlines').alias('sum_nlines'),
+        F.sum('original_nlines').alias('sum_original_nlines')
+    ]
+    # 按照 'bucket' 和 'lang' 字段进行分组，并计算每个组合的数量和求和
+    aggregated_df = df.groupBy('bucket', 'lang').agg(
+        F.count('*').alias('count'), *sum_columns
+    )
+    # 添加两列做比较
+    aggregated_df = aggregated_df.withColumn('length_ratio', F.col('sum_length') / F.col('sum_original_length'))
+    aggregated_df = aggregated_df.withColumn('nlines_ratio', F.col('sum_nlines') / F.col('sum_original_nlines'))
+
+    # 显示聚合后的结果
+    aggregated_df.show()
