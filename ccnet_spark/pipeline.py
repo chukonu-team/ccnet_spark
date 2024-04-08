@@ -1,11 +1,9 @@
-from pathlib import Path
 from typing import NamedTuple, Sequence
 from .pipe_preprocess import load_segments
 from .pipe_hash import compute_hashes, split_doc2para
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.functions import explode
-from pyspark.sql.functions import sum as spark_sum
 from pyspark.sql.functions import col
 from .pipe_lid import predictLang
 from .pipe_tokenized import doSentencePiece

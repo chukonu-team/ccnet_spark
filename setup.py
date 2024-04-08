@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name = "ccnet_spark",
-    version = "0.1",
+    version = "0.1.0",
     author = "SeeLey Wang",
     author_email = "zizdlp@gmail.com",
     description = ("a spark version for ccnet"),
@@ -19,6 +19,7 @@ setup(
     keywords = "cc_net spark",
     url = "",
     packages=['ccnet_spark'],
+    long_description=read('README.md'),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Topic :: Utilities",

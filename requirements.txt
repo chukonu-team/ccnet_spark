@@ -1,6 +1,9 @@
-fasttext
-sentencepiece
-kenlm @ git+https://github.com/kpu/kenlm.git@master
-cachetools
-pyarrow
-tqdm
+fasttext==0.9.2
+sentencepiece==0.2.0
+tqdm==4.66.2
+pyarrow==15.0.2
+pandas==2.2.1
+cachetools==5.3.3
+numpy==1.26.4
+pyspark==3.5.1
+requests==2.31.0
