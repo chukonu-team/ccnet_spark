@@ -7,10 +7,9 @@ from pyspark.sql.types import (
 )
 import fasttext  # type: ignore
 
-model_path = "../cc_net/bin/lid.bin"
 @cached(cache={})
-def getFastTextModel():
-    fasttext_model = fasttext.load_model(model_path)
+def getFastTextModel(fasttext_model_path):
+    fasttext_model = fasttext.load_model(fasttext_model_path)
     return fasttext_model
 
 
@@ -29,13 +28,13 @@ def predict(model, text: str, k: int = 1):
         ]
     )
 )
-def predictLang(text):
+def predictLang(text,fasttext_model_path,threshold):
     if not text:
         return None, None
-    labels, scores = predict(getFastTextModel(), text.replace("\n", ""), k=1)
+    labels, scores = predict(getFastTextModel(fasttext_model_path), text.replace("\n", ""), k=1)
     scores.round(2, out=scores)
     lang = labels[0]
     score = scores[0]
-    if score < 0.5:
+    if score < threshold:
         return None, None
     return lang, float(score)

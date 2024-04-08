@@ -5,11 +5,11 @@ from pathlib import Path
 from .pipe_tokenized import get_lm_languages 
 import kenlm  # type: ignore
 
-lm_dir: Path = Path("../cc_net/data/lm_sp")
 @cached(cache={})
-def getDocLMModel(lang):
-    models={lang: lm_dir / f"{lang}.arpa.bin" for lang in get_lm_languages()}
-    lms=get_lm_languages()
+def getDocLMModel(lang,lm_dir):
+    lm_dir=Path(lm_dir)
+    models={lang: lm_dir / f"{lang}.arpa.bin" for lang in get_lm_languages(lm_dir)}
+    lms=get_lm_languages(lm_dir)
     if(lms is None or lang not in lms):
         return None
     lm_config = kenlm.Config()
@@ -19,10 +19,10 @@ def getDocLMModel(lang):
 def pp(log_score, length):
     return 10.0 ** (-log_score / length)
 @udf(returnType=FloatType())
-def doDocLM(text,lang):
+def doDocLM(text,lang,lm_dir):
     if text is None or lang is None:
         return None
-    model = getDocLMModel(lang)
+    model = getDocLMModel(lang,lm_dir)
     if model is None:
         return None
     lines = text.split("\n")

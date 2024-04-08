@@ -11,7 +11,9 @@ from .pipe_lid import predictLang
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation,load_partation,analy_df
+from .pipe_save import save_partation, load_partation, analy_df
+import pandas as pd
+
 DEFAULT_PIPELINE = [
     "real_len",
     "hash",
@@ -44,6 +46,12 @@ class Config(NamedTuple):
     sampleRate: float = 0.01
     n_segments: int = 10
     pipeline: Sequence[str] = DEFAULT_PIPELINE
+    threshold: float = 0.5
+    fasttext_model_path: str = "../cc_net/bin/lid.bin"
+    lm_dir: str = "../cc_net/data/lm_sp"
+    cutoff_csv_path: str = "../cc_net/cc_net/" + "data/" + "cutoff.csv"
+    percentile_head: int = 30
+    percentile_tail: int = 60
     spark: SparkSession = (
         SparkSession.builder.appName("CCNETSpark")
         .config("spark.executor.memory", "100g")
@@ -59,15 +67,29 @@ class Pipeline:
         #### loaded from config
         self.dump = config.dump
         self.cache_dir = config.cache_dir
-        self.output_dir= config.output_dir
+        self.output_dir = config.output_dir
         self.min_len = config.min_len
         self.isSample = config.isSample
         self.sampleRate = config.sampleRate
         self.n_segments = config.n_segments
         self.pipelines = config.pipeline
+        self.threshold = config.threshold
+        self.lm_dir = config.lm_dir
+        self.fasttext_model_path = config.fasttext_model_path
+        self.cutoff_csv_path = config.cutoff_csv_path
+        self.percentile_head = config.percentile_head
+        self.percentile_tail = config.percentile_tail
         self.spark = config.spark
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
+        cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
+        self.cutoffs = {
+            lang: (
+                cutoffs[lang][self.percentile_head],
+                cutoffs[lang][self.percentile_tail],
+            )
+            for lang in cutoffs.columns
+        }
 
     def load_data(self):
         spark_df = load_segments(
@@ -79,7 +101,7 @@ class Pipeline:
             sampleRate=self.sampleRate,
             min_len=self.min_len,
         )
-        self.origin_df=spark_df
+        self.origin_df = spark_df
         self.df = spark_df
         return spark_df
 
@@ -134,21 +156,54 @@ class Pipeline:
                     "exploded_content"
                 )
             elif pipeline == "lid":
-                lang_df = self.df.withColumn("lang_score", predictLang("raw_content"))
-                self.df = lang_df.withColumn("lang", lang_df.lang_score.lang) \
-                                .withColumn("score", lang_df.lang_score.score) \
-                                .drop("lang_score")
+                lang_df = self.df.withColumn(
+                    "lang_score",
+                    predictLang(
+                        "raw_content",
+                        F.lit(self.fasttext_model_path),
+                        F.lit(self.threshold),
+                    ),
+                )
+                self.df = (
+                    lang_df.withColumn("lang", lang_df.lang_score.lang)
+                    .withColumn("score", lang_df.lang_score.score)
+                    .drop("lang_score")
+                )
             elif pipeline == "sp":
-                self.df = self.df.withColumn("tokenized", doSentencePiece("raw_content","lang"))
+                self.df = self.df.withColumn(
+                    "tokenized",
+                    doSentencePiece("raw_content", "lang", F.lit(self.lm_dir)),
+                )
             elif pipeline == "lm":
-                self.df = self.df.withColumn("perplexity", doDocLM("tokenized","lang"))
+                self.df = self.df.withColumn(
+                    "perplexity", doDocLM("tokenized", "lang", F.lit(self.lm_dir))
+                )
             elif pipeline == "pp_bucket":
-                self.df = self.df.withColumn("bucket", doPPBucket("perplexity","lang"))
+                self.df = self.df.withColumn("bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs))))
             elif pipeline == "drop":
                 self.df = self.df.drop("tokenized")
+
     def save_data(self):
-        save_partation(self.df,self.output_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
-    def load_partation_data(self,lang,bucket):
-        return load_partation(self.spark,lang,bucket,self.output_dir,self.dump,self.isSample,self.sampleRate,self.min_len)
+        save_partation(
+            self.df,
+            self.output_dir,
+            self.dump,
+            self.isSample,
+            self.sampleRate,
+            self.min_len,
+        )
+
+    def load_partation_data(self, lang, bucket):
+        return load_partation(
+            self.spark,
+            lang,
+            bucket,
+            self.output_dir,
+            self.dump,
+            self.isSample,
+            self.sampleRate,
+            self.min_len,
+        )
+
     def analy(self):
         analy_df(self.df)

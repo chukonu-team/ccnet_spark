@@ -7,7 +7,6 @@ import os
 import logging
 import requests
 from io import BytesIO
-import gzip
 from tqdm import tqdm
 logging.basicConfig(
     level=logging.INFO,
