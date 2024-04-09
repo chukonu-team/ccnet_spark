@@ -42,6 +42,11 @@ def get_paths_path(dump:str,cache_dir:str):
         else:
             print(f"Failed to download {paths_path_url}. Status code: {response.status_code}")
     return paths_path
+def get_segment_count(dump:str,cache_dir:str):
+    paths_path = get_paths_path(dump=dump,cache_dir=cache_dir)
+    with gzip.open(paths_path, 'rb') as gzip_file:
+        bytes_data = BytesIO(gzip_file.read())
+        return len(bytes_data)
 def get_segment_path(dump:str,cache_dir:str,segment:int):   
     paths_path = get_paths_path(dump=dump,cache_dir=cache_dir)
     with gzip.open(paths_path, 'rb') as gzip_file:
