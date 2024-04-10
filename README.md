@@ -24,9 +24,9 @@ ccnet_spark 是一个python package，使用pyspark实现CommonCrawl数据清洗
 源码安装:
 
 ```shell
-    python setup.py bdist_wheel
+    python setup.py sdist
     cd dist
-    pip install --user ccnet_spark*.whl
+    pip install ccnet-*
 ```
 
 ## 卸载

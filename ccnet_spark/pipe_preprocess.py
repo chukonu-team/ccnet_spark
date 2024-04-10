@@ -8,6 +8,8 @@ import logging
 import requests
 from io import BytesIO
 from tqdm import tqdm
+
+from .util import convert_to_absolute_path
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(process)d:%(name)s - %(message)s",
@@ -73,10 +75,6 @@ def get_segment_path(dump:str,cache_dir:str,segment:int):
                         print(f"Downloaded {file_path_saved}")
                 return file_path_saved
     return None
-def convert_to_absolute_path(file_path):
-    if not os.path.isabs(file_path):
-        file_path = os.path.abspath(file_path)
-    return file_path
 
 def _close_when_exhausted(file: TextIO) -> Iterable[str]:
     with file:

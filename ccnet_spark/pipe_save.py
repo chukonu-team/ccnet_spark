@@ -1,6 +1,7 @@
 import os
 from pyspark.sql import functions as F
-from .pipe_preprocess import convert_to_absolute_path
+
+from .util import convert_to_absolute_path
 def save_partation(
     spark_df,
     use_hdfs:bool,

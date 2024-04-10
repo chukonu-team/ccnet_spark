@@ -1,11 +1,13 @@
 from typing import NamedTuple, Sequence
-from .pipe_preprocess import load_segments
-from .pipe_hash import compute_hashes, split_doc2para
-from pyspark.sql import SparkSession
+
 from pyspark.sql import functions as F
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode
 from pyspark.sql.functions import col
+
 from .pipe_lid import predictLang
+from .pipe_preprocess import load_segments
+from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
@@ -50,18 +52,10 @@ class Config(NamedTuple):
     cutoff_csv_path: str = "../cc_net/cc_net/" + "data/" + "cutoff.csv"
     percentile_head: int = 30
     percentile_tail: int = 60
-    spark: SparkSession = (
-        SparkSession.builder.appName("CCNETSpark")
-        .config("spark.executor.memory", "100g")
-        .config("spark.driver.memory", "32g")
-        .config("spark.driver.maxResultSize", "32g")
-        .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-        .getOrCreate()
-    )
 
 
 class Pipeline:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config,spark: SparkSession):
         #### loaded from config
         self.dump = config.dump
         self.cache_dir = config.cache_dir
@@ -77,7 +71,7 @@ class Pipeline:
         self.cutoff_csv_path = config.cutoff_csv_path
         self.percentile_head = config.percentile_head
         self.percentile_tail = config.percentile_tail
-        self.spark = config.spark
+        self.spark = spark
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
