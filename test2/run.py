@@ -58,18 +58,10 @@ pips = [
 ]
 
 
-spark = (
-    SparkSession.builder.appName("CCNETSpark")
-    .config("spark.executor.memory", "100g")
-    .config("spark.driver.memory", "32g")
-    .config("spark.driver.maxResultSize", "32g")
-    .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-    .getOrCreate()
-)
 times = []
 for p in pips:
     config = Config(
-        isSample=False,
+        isSample=True,
         n_segments=1,
         sampleRate=0.01,
         cache_dir="../../cached_data/",
@@ -78,14 +70,25 @@ for p in pips:
         lm_dir='../../cc_net/data/lm_sp', 
         cutoff_csv_path='../../cc_net/cc_net/data/cutoff.csv',
         dump="2019-18",
+        pipeline=p,
     )
-    print(config)
+    spark = (
+    SparkSession.builder.appName(f"CCNETSpark_{p}")
+    .config("spark.executor.memory", "100g")
+    .config("spark.driver.memory", "32g")
+    .config("spark.driver.maxResultSize", "32g")
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+    .getOrCreate()
+)
     pipeline = Pipeline(config,spark)
     df = pipeline.load_data()
     s = time.time()
     pipeline.run()
-    pipeline.df.count()
+    pipeline.save_to_tmp()
     e = time.time()
     times.append(e - s)
     print(f"config:{config} time consume:{e-s}")
-print(f"times:{times}")
+
+for index,t in enumerate(times):
+    print("=====================================")
+    print(f"pipeline:{pips[index]},comsume:{t}s")

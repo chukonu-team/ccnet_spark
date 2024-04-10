@@ -11,7 +11,7 @@ from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation, load_partation, analy_df
+from .pipe_save import save_partation, load_partation, analy_df,save_tmp
 import pandas as pd
 
 DEFAULT_PIPELINE = [
@@ -52,6 +52,7 @@ class Config(NamedTuple):
     cutoff_csv_path: str = "../cc_net/cc_net/" + "data/" + "cutoff.csv"
     percentile_head: int = 30
     percentile_tail: int = 60
+    use_hdfs:bool = False
 
 
 class Pipeline:
@@ -72,6 +73,7 @@ class Pipeline:
         self.percentile_head = config.percentile_head
         self.percentile_tail = config.percentile_tail
         self.spark = spark
+        self.use_hdfs= config.use_hdfs
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -174,10 +176,20 @@ class Pipeline:
                 self.df = self.df.withColumn("bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs))))
             elif pipeline == "drop":
                 self.df = self.df.drop("tokenized")
-
+    def save_to_tmp(self):
+        save_tmp(
+            self.df,
+            self.use_hdfs,
+            self.output_dir,
+            self.dump,
+            self.isSample,
+            self.sampleRate,
+            self.min_len,
+        )
     def save_data(self):
         save_partation(
             self.df,
+            self.use_hdfs,
             self.output_dir,
             self.dump,
             self.isSample,
