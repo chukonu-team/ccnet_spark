@@ -79,7 +79,7 @@ if __name__ == "__main__":
     pip=getPIP(index)
     print(f"pipline is:{pip}")
     config = Config(
-            isSample=True,
+            isSample=False,
             n_segments=1,
             sampleRate=0.01,
             cache_dir="../../cached_data/",
