@@ -1,6 +1,15 @@
 from ccnet_spark.pipe_line import Pipeline, Config
 import time
 from pyspark.sql import SparkSession
+spark = (
+    SparkSession.builder.appName("CCNETSpark_ONLY")
+    # .master("local[*]")
+    .config("spark.executor.memory", "100g")
+    .config("spark.driver.memory", "100g")
+    .config("spark.driver.maxResultSize", "100g")
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+    .getOrCreate()
+)
 pips = [
     [],
     [
@@ -57,9 +66,22 @@ pips = [
     ],
 ]
 
+# spark = (
+#     SparkSession.builder.appName("CCNETSpark_ONLY")
+#     .master("local[*]")
+#     .config("spark.executor.memory", "100g")
+#     .config("spark.driver.memory", "100g")
+#     .config("spark.driver.maxResultSize", "100g")
+#     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+#     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
+#     # .config("spark.driver.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
+#     .getOrCreate()
+# )
 
 times = []
-for p in pips:
+for index,p in enumerate(pips):
+    if(index!=6):
+        continue
     config = Config(
         isSample=True,
         n_segments=1,
@@ -72,22 +94,17 @@ for p in pips:
         dump="2019-18",
         pipeline=p,
     )
-    spark = (
-    SparkSession.builder.appName(f"CCNETSpark_{p}")
-    .config("spark.executor.memory", "100g")
-    .config("spark.driver.memory", "32g")
-    .config("spark.driver.maxResultSize", "32g")
-    .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-    .getOrCreate()
-)
+
     pipeline = Pipeline(config,spark)
     df = pipeline.load_data()
     s = time.time()
     pipeline.run()
-    pipeline.save_to_tmp()
+    res=pipeline.df.rdd.count()
+    # pipeline.save_data()
+
     e = time.time()
     times.append(e - s)
-    print(f"config:{config} time consume:{e-s}")
+    print(f"pipeline:{pips[index]}, time consume:{e-s}")
 
 for index,t in enumerate(times):
     print("=====================================")
