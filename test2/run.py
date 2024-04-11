@@ -1,4 +1,4 @@
-from ccnet_spark.pipe_line import Pipeline, Config
+from ccnet_spark.pipe_line import Pipeline, Config,PipelineStep
 import time
 from pyspark.sql import SparkSession
 import sys
@@ -7,56 +7,56 @@ def getPIP(index):
     pips = [
     [],
     [
-        "real_len",
+        PipelineStep.REAL_LEN,
     ],
     [
-        "real_len",
-        "hash",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH
     ],
     [
-        "real_len",
-        "hash",
-        "dedup_keep",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH,
+        PipelineStep.DEDUP_KEEP
     ],
     [
-        "real_len",
-        "hash",
-        "dedup_keep",
-        "lid",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH,
+        PipelineStep.DEDUP_KEEP,
+        PipelineStep.LID,
     ],
     [
-        "real_len",
-        "hash",
-        "dedup_keep",
-        "lid",
-        "sp",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH,
+        PipelineStep.DEDUP_KEEP,
+        PipelineStep.LID,
+        PipelineStep.SP,
     ],
     [
-        "real_len",
-        "hash",
-        "dedup_keep",
-        "lid",
-        "sp",
-        "lm",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH,
+        PipelineStep.DEDUP_KEEP,
+        PipelineStep.LID,
+        PipelineStep.SP,
+        PipelineStep.LM,
     ],
     [
-        "real_len",
-        "hash",
-        "dedup_keep",
-        "lid",
-        "sp",
-        "lm",
-        "pp_bucket",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH,
+        PipelineStep.DEDUP_KEEP,
+        PipelineStep.LID,
+        PipelineStep.SP,
+        PipelineStep.LM,
+        PipelineStep.PP_BUCKET,
     ],
     [
-        "real_len",
-        "hash",
-        "dedup_keep",
-        "lid",
-        "sp",
-        "lm",
-        "pp_bucket",
-        "drop",
+        PipelineStep.REAL_LEN,
+        PipelineStep.HASH,
+        PipelineStep.DEDUP_KEEP,
+        PipelineStep.LID,
+        PipelineStep.SP,
+        PipelineStep.LM,
+        PipelineStep.PP_BUCKET,
+        PipelineStep.DROP,
     ],
 ]
     return pips[index]

@@ -11,20 +11,32 @@ from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation, load_partation, analy_df,save_tmp
+from .pipe_save import save_partation, load_partation, analy_df, save_tmp
 import pandas as pd
+from enum import Enum
+
+class PipelineStep(Enum):
+    REAL_LEN = "real_len"
+    HASH = "hash"
+    DEDUP_KEEP = "dedup_keep"
+    DEDUP_NOKEEP = "dedup_nokeep"
+    LID = "lid"
+    SP = "sp"
+    LM = "lm"
+    PP_BUCKET = "pp_bucket"
+    DROP = "drop"
+
 
 DEFAULT_PIPELINE = [
-    "real_len",
-    "hash",
-    "dedup_keep",  # "dedup_nokeep"
-    "lid",
-    "sp",
-    "lm",
-    "pp_bucket",
-    "drop",
+    PipelineStep.REAL_LEN,
+    PipelineStep.HASH,
+    PipelineStep.DEDUP_KEEP,
+    PipelineStep.LID,
+    PipelineStep.SP,
+    PipelineStep.LM,
+    PipelineStep.PP_BUCKET,
+    PipelineStep.DROP,
 ]
-
 
 class Config(NamedTuple):
     """
@@ -45,18 +57,18 @@ class Config(NamedTuple):
     isSample: bool = False
     sampleRate: float = 0.01
     n_segments: int = 10
-    pipeline: Sequence[str] = DEFAULT_PIPELINE
+    pipeline: Sequence[PipelineStep] = DEFAULT_PIPELINE
     threshold: float = 0.5
     fasttext_model_path: str = "../cc_net/bin/lid.bin"
     lm_dir: str = "../cc_net/data/lm_sp"
     cutoff_csv_path: str = "../cc_net/cc_net/" + "data/" + "cutoff.csv"
     percentile_head: int = 30
     percentile_tail: int = 60
-    use_hdfs:bool = False
+    use_hdfs: bool = False
 
 
 class Pipeline:
-    def __init__(self, config: Config,spark: SparkSession):
+    def __init__(self, config: Config, spark: SparkSession):
         #### loaded from config
         self.dump = config.dump
         self.cache_dir = config.cache_dir
@@ -73,7 +85,7 @@ class Pipeline:
         self.percentile_head = config.percentile_head
         self.percentile_tail = config.percentile_tail
         self.spark = spark
-        self.use_hdfs= config.use_hdfs
+        self.use_hdfs = config.use_hdfs
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -98,85 +110,110 @@ class Pipeline:
         self.origin_df = spark_df
         self.df = spark_df
         return spark_df
-    def run_step(self,pipeline):
-        if pipeline == "real_len":
-                self.df = self.df.withColumn("length", F.length(self.df["raw_content"]))
-        elif pipeline == "hash":
-            split_result = self.df.withColumn(
-                "split_content", split_doc2para(self.df["raw_content"])
-            )
-            exploded_df = split_result.withColumn(
-                "exploded_content", explode(split_result.split_content)
-            ).drop("split_content")
-            self.df = exploded_df.withColumn(
-                "hash_value", compute_hashes(exploded_df.exploded_content.raw_line)
-            )
-        elif pipeline == "dedup_keep" or pipeline == "dedup_nokeep":
-            if pipeline == "dedup_keep":
-                self.df = self.df.dropDuplicates(
-                    ["hash_value"]
-                )  # 第一种是保留一次重复行
-            else:
-                duplicate_counts = (
-                    self.df.groupBy("hash_value").count().where(col("count") > 1)
-                )
-                # 根据重复行的信息，使用 filter 过滤掉重复行
-                self.df = self.df.join(
-                    duplicate_counts, on="hash_value", how="left_anti"
-                )
 
-            group_df = self.df.groupBy("digest").agg(
-                F.first("url").alias("url"),
-                F.first("date_download").alias("date_download"),
-                F.first("source_domain").alias("source_domain"),
-                F.first("cc_segment").alias("cc_segment"),
-                F.first("length").alias("original_length"),
-                F.first("nlines").alias("original_nlines"),
-                F.first("title").alias("title"),
-                F.count("exploded_content.raw_line_id").alias("nlines"),
-                F.sort_array(F.collect_list("exploded_content")).alias(
-                    "exploded_content"
-                ),
+    def run_step(self, pipeline: PipelineStep):
+        if not isinstance(pipeline, PipelineStep):
+            raise ValueError("Invalid pipeline type. Expected Pipeline enum member.")
+        if pipeline == PipelineStep.REAL_LEN:
+            self.df = self.df.withColumn("length", F.length(self.df["raw_content"]))
+        elif pipeline == PipelineStep.HASH:
+            self.compute_hashes()
+        elif (
+            pipeline == PipelineStep.DEDUP_KEEP or pipeline == PipelineStep.DEDUP_NOKEEP
+        ):
+            self.deduplicate(pipeline)
+        elif pipeline == PipelineStep.LID:
+            self.predict_lang()
+        elif pipeline == PipelineStep.SP:
+            self.do_sentence_piece()
+        elif pipeline == PipelineStep.LM:
+            self.do_doc_lm()
+        elif pipeline == PipelineStep.PP_BUCKET:
+            self.do_pp_bucket()
+        elif pipeline == PipelineStep.DROP:
+            self.drop_columns()
+
+    def compute_hashes(self):
+        split_result = self.df.withColumn(
+            "split_content", split_doc2para(self.df["raw_content"])
+        )
+        exploded_df = split_result.withColumn(
+            "exploded_content", explode(split_result.split_content)
+        ).drop("split_content")
+        self.df = exploded_df.withColumn(
+            "hash_value", compute_hashes(exploded_df.exploded_content.raw_line)
+        )
+
+    def deduplicate(self, pipeline: PipelineStep):
+        if pipeline == PipelineStep.DEDUP_KEEP:
+            self.df = self.df.dropDuplicates(["hash_value"])
+        else:
+            duplicate_counts = (
+                self.df.groupBy("hash_value").count().where(col("count") > 1)
             )
-            group_df = group_df.withColumn(
-                "raw_content", F.concat_ws("\n", "exploded_content.raw_line")
-            )
-            group_df = group_df.withColumn(
-                "raw_line_id", group_df.exploded_content.raw_line_id
-            )
-            self.df = group_df.withColumn("length", F.length("raw_content")).drop(
-                "exploded_content"
-            )
-        elif pipeline == "lid":
-            lang_df = self.df.withColumn(
-                "lang_score",
-                predictLang(
-                    "raw_content",
-                    F.lit(self.fasttext_model_path),
-                    F.lit(self.threshold),
-                ),
-            )
-            self.df = (
-                lang_df.withColumn("lang", lang_df.lang_score.lang)
-                .withColumn("score", lang_df.lang_score.score)
-                .drop("lang_score")
-            )
-        elif pipeline == "sp":
-            self.df = self.df.withColumn(
-                "tokenized",
-                doSentencePiece("raw_content", "lang", F.lit(self.lm_dir)),
-            )
-        elif pipeline == "lm":
-            self.df = self.df.withColumn(
-                "perplexity", doDocLM("tokenized", "lang", F.lit(self.lm_dir))
-            )
-        elif pipeline == "pp_bucket":
-            self.df = self.df.withColumn("bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs))))
-        elif pipeline == "drop":
-            self.df = self.df.drop("tokenized")
+            self.df = self.df.join(duplicate_counts, on="hash_value", how="left_anti")
+        self.group_and_concat()
+
+    def group_and_concat(self):
+        group_df = self.df.groupBy("digest").agg(
+            F.first("url").alias("url"),
+            F.first("date_download").alias("date_download"),
+            F.first("source_domain").alias("source_domain"),
+            F.first("cc_segment").alias("cc_segment"),
+            F.first("length").alias("original_length"),
+            F.first("nlines").alias("original_nlines"),
+            F.first("title").alias("title"),
+            F.count("exploded_content.raw_line_id").alias("nlines"),
+            F.sort_array(F.collect_list("exploded_content")).alias("exploded_content"),
+        )
+        group_df = group_df.withColumn(
+            "raw_content", F.concat_ws("\n", "exploded_content.raw_line")
+        )
+        group_df = group_df.withColumn(
+            "raw_line_id", group_df.exploded_content.raw_line_id
+        )
+        self.df = group_df.withColumn("length", F.length("raw_content")).drop(
+            "exploded_content"
+        )
+
+    def predict_lang(self):
+        lang_df = self.df.withColumn(
+            "lang_score",
+            predictLang(
+                "raw_content",
+                F.lit(self.fasttext_model_path),
+                F.lit(self.threshold),
+            ),
+        )
+        self.df = (
+            lang_df.withColumn("lang", lang_df.lang_score.lang)
+            .withColumn("score", lang_df.lang_score.score)
+            .drop("lang_score")
+        )
+
+    def do_sentence_piece(self):
+        self.df = self.df.withColumn(
+            "tokenized",
+            doSentencePiece("raw_content", "lang", F.lit(self.lm_dir)),
+        )
+
+    def do_doc_lm(self):
+        self.df = self.df.withColumn(
+            "perplexity", doDocLM("tokenized", "lang", F.lit(self.lm_dir))
+        )
+
+    def do_pp_bucket(self):
+        self.df = self.df.withColumn(
+            "bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs)))
+        )
+
+    def drop_columns(self):
+        self.df = self.df.drop("tokenized")
+
     def run_pipeline(self):
         for pipeline in self.pipelines:
             self.run_step(pipeline)
+
     def save_to_tmp(self):
         save_tmp(
             self.df,
@@ -187,6 +224,7 @@ class Pipeline:
             self.sampleRate,
             self.min_len,
         )
+
     def save_data(self):
         save_partation(
             self.df,
