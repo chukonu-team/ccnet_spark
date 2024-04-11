@@ -15,7 +15,13 @@
 - pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket'], time consume:10.074767351150513
 - pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:10.004109382629395
 
-## 采用1segment
+## 采用1segment 100% 采样率，40000左右文档数量
 
-pipeline:[], time consume:2.738440752029419
-pipeline:['real_len'], time consume:3.108684778213501
+- pipeline:[], time consume:2.738440752029419
+- pipeline:['real_len'], time consume:3.108684778213501
+- pipeline:['real_len', 'hash', 'dedup_keep'], time consume:27.466034412384033
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid'], time consume:32.32525587081909
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp'], time consume:54.34147000312805
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm'], time consume:543.8582842350006
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket'], time consume:61.25188612937927
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:61.04007005691528
