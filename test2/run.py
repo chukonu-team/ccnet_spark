@@ -94,7 +94,7 @@ if __name__ == "__main__":
     pipeline = Pipeline(config,spark)
     df = pipeline.load_data()
     s = time.time()
-    pipeline.run()
+    pipeline.run_pipeline()
     res=pipeline.df.rdd.count()
     # pipeline.save_data()
     e = time.time()

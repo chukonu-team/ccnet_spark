@@ -98,84 +98,85 @@ class Pipeline:
         self.origin_df = spark_df
         self.df = spark_df
         return spark_df
-
-    def run(self):
-        for pipeline in self.pipelines:
-            if pipeline == "real_len":
+    def run_step(self,pipeline):
+        if pipeline == "real_len":
                 self.df = self.df.withColumn("length", F.length(self.df["raw_content"]))
-            elif pipeline == "hash":
-                split_result = self.df.withColumn(
-                    "split_content", split_doc2para(self.df["raw_content"])
+        elif pipeline == "hash":
+            split_result = self.df.withColumn(
+                "split_content", split_doc2para(self.df["raw_content"])
+            )
+            exploded_df = split_result.withColumn(
+                "exploded_content", explode(split_result.split_content)
+            ).drop("split_content")
+            self.df = exploded_df.withColumn(
+                "hash_value", compute_hashes(exploded_df.exploded_content.raw_line)
+            )
+        elif pipeline == "dedup_keep" or pipeline == "dedup_nokeep":
+            if pipeline == "dedup_keep":
+                self.df = self.df.dropDuplicates(
+                    ["hash_value"]
+                )  # 第一种是保留一次重复行
+            else:
+                duplicate_counts = (
+                    self.df.groupBy("hash_value").count().where(col("count") > 1)
                 )
-                exploded_df = split_result.withColumn(
-                    "exploded_content", explode(split_result.split_content)
-                ).drop("split_content")
-                self.df = exploded_df.withColumn(
-                    "hash_value", compute_hashes(exploded_df.exploded_content.raw_line)
+                # 根据重复行的信息，使用 filter 过滤掉重复行
+                self.df = self.df.join(
+                    duplicate_counts, on="hash_value", how="left_anti"
                 )
-            elif pipeline == "dedup_keep" or pipeline == "dedup_nokeep":
-                if pipeline == "dedup_keep":
-                    self.df = self.df.dropDuplicates(
-                        ["hash_value"]
-                    )  # 第一种是保留一次重复行
-                else:
-                    duplicate_counts = (
-                        self.df.groupBy("hash_value").count().where(col("count") > 1)
-                    )
-                    # 根据重复行的信息，使用 filter 过滤掉重复行
-                    self.df = self.df.join(
-                        duplicate_counts, on="hash_value", how="left_anti"
-                    )
 
-                group_df = self.df.groupBy("digest").agg(
-                    F.first("url").alias("url"),
-                    F.first("date_download").alias("date_download"),
-                    F.first("source_domain").alias("source_domain"),
-                    F.first("cc_segment").alias("cc_segment"),
-                    F.first("length").alias("original_length"),
-                    F.first("nlines").alias("original_nlines"),
-                    F.first("title").alias("title"),
-                    F.count("exploded_content.raw_line_id").alias("nlines"),
-                    F.sort_array(F.collect_list("exploded_content")).alias(
-                        "exploded_content"
-                    ),
-                )
-                group_df = group_df.withColumn(
-                    "raw_content", F.concat_ws("\n", "exploded_content.raw_line")
-                )
-                group_df = group_df.withColumn(
-                    "raw_line_id", group_df.exploded_content.raw_line_id
-                )
-                self.df = group_df.withColumn("length", F.length("raw_content")).drop(
+            group_df = self.df.groupBy("digest").agg(
+                F.first("url").alias("url"),
+                F.first("date_download").alias("date_download"),
+                F.first("source_domain").alias("source_domain"),
+                F.first("cc_segment").alias("cc_segment"),
+                F.first("length").alias("original_length"),
+                F.first("nlines").alias("original_nlines"),
+                F.first("title").alias("title"),
+                F.count("exploded_content.raw_line_id").alias("nlines"),
+                F.sort_array(F.collect_list("exploded_content")).alias(
                     "exploded_content"
-                )
-            elif pipeline == "lid":
-                lang_df = self.df.withColumn(
-                    "lang_score",
-                    predictLang(
-                        "raw_content",
-                        F.lit(self.fasttext_model_path),
-                        F.lit(self.threshold),
-                    ),
-                )
-                self.df = (
-                    lang_df.withColumn("lang", lang_df.lang_score.lang)
-                    .withColumn("score", lang_df.lang_score.score)
-                    .drop("lang_score")
-                )
-            elif pipeline == "sp":
-                self.df = self.df.withColumn(
-                    "tokenized",
-                    doSentencePiece("raw_content", "lang", F.lit(self.lm_dir)),
-                )
-            elif pipeline == "lm":
-                self.df = self.df.withColumn(
-                    "perplexity", doDocLM("tokenized", "lang", F.lit(self.lm_dir))
-                )
-            elif pipeline == "pp_bucket":
-                self.df = self.df.withColumn("bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs))))
-            elif pipeline == "drop":
-                self.df = self.df.drop("tokenized")
+                ),
+            )
+            group_df = group_df.withColumn(
+                "raw_content", F.concat_ws("\n", "exploded_content.raw_line")
+            )
+            group_df = group_df.withColumn(
+                "raw_line_id", group_df.exploded_content.raw_line_id
+            )
+            self.df = group_df.withColumn("length", F.length("raw_content")).drop(
+                "exploded_content"
+            )
+        elif pipeline == "lid":
+            lang_df = self.df.withColumn(
+                "lang_score",
+                predictLang(
+                    "raw_content",
+                    F.lit(self.fasttext_model_path),
+                    F.lit(self.threshold),
+                ),
+            )
+            self.df = (
+                lang_df.withColumn("lang", lang_df.lang_score.lang)
+                .withColumn("score", lang_df.lang_score.score)
+                .drop("lang_score")
+            )
+        elif pipeline == "sp":
+            self.df = self.df.withColumn(
+                "tokenized",
+                doSentencePiece("raw_content", "lang", F.lit(self.lm_dir)),
+            )
+        elif pipeline == "lm":
+            self.df = self.df.withColumn(
+                "perplexity", doDocLM("tokenized", "lang", F.lit(self.lm_dir))
+            )
+        elif pipeline == "pp_bucket":
+            self.df = self.df.withColumn("bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs))))
+        elif pipeline == "drop":
+            self.df = self.df.drop("tokenized")
+    def run_pipeline(self):
+        for pipeline in self.pipelines:
+            self.run_step(pipeline)
     def save_to_tmp(self):
         save_tmp(
             self.df,
