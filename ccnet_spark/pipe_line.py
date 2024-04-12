@@ -96,7 +96,28 @@ class Pipeline:
             )
             for lang in cutoffs.columns
         }
-
+    def timer(self):
+        n=len(self.pipelines)
+        if(n==0):
+            _=self.df.select("length").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.REAL_LEN):
+            _=self.df.select("length").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.HASH):
+            _=self.df.select("length","exploded_content","hash_value").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.DEDUP_KEEP or self.pipelines[-1]== PipelineStep.DEDUP_NOKEEP):
+            _=self.df.select("length","nlines",'raw_line_id','original_length','original_nlines',"raw_content").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.LID):
+            _=self.df.select("length","nlines",'raw_line_id','original_length','original_nlines','lang','score').rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.SP):
+            _=self.df.select("length","nlines",'raw_line_id','original_length','original_nlines','lang','score',"tokenized").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.LM):
+            _=self.df.select("length","nlines",'raw_line_id','original_length','original_nlines','lang','score',"perplexity").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.PP_BUCKET):
+            _=self.df.select("length","nlines",'raw_line_id','original_length','original_nlines','lang','score',"bucket").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.DROP):
+            _=self.df.select("length","nlines",'raw_line_id','original_length','original_nlines','lang','score',"bucket").rdd.count()
+        else:
+            print("unknown pipeline")
     def load_data(self):
         spark_df = load_segments(
             self.spark,
