@@ -2,7 +2,6 @@ from ccnet_spark.pipe_line import Pipeline, Config,PipelineStep
 import time
 from pyspark.sql import SparkSession
 import sys
-
 def getPIP(index):
     pips = [
     [],
@@ -62,11 +61,11 @@ def getPIP(index):
     return pips[index]
 
 spark = (
-    SparkSession.builder.appName("CCNETSpark_ONLY")
-    # .master("local[*]")
+    SparkSession.builder.appName("ccnetspark_local_profile")
+    .master("local[*]")
     .config("spark.executor.memory", "100g")
-    .config("spark.driver.memory", "100g")
-    .config("spark.driver.maxResultSize", "100g")
+    .config("spark.driver.memory", "10g")
+    .config("spark.driver.maxResultSize", "10g")
     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
     # .config("spark.driver.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
@@ -80,7 +79,7 @@ if __name__ == "__main__":
     print(f"pipline is:{pip}")
     config = Config(
             isSample=False,
-            n_segments=1,
+            n_segments=10,
             sampleRate=0.01,
             cache_dir="../../cached_data/",
             output_dir="../../cached_data/",
@@ -95,11 +94,19 @@ if __name__ == "__main__":
     df = pipeline.load_data()
     s = time.time()
     pipeline.run_pipeline()
+    # random_row = pipeline.df.sample(fraction=0.00001, seed=42)
+    # res=random_row.collect()
+    # random_row = pipeline.df.orderBy(rand()).limit(1)
+    # random_row = pipeline.df.rdd.takeSample(False, 1, seed=42)
+
+
+
+
     pipeline.timer()
     # pipeline.save_to_tmp()
     # res=pipeline.df.select("url").rdd.count()
     # pipeline.save_data()
     e = time.time()
     print("==============================================")
-    print(f"pipeline:{pip}, time consume:{e-s}")
+    print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
 

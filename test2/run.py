@@ -99,5 +99,5 @@ if __name__ == "__main__":
     # pipeline.save_data()
     e = time.time()
     print("==============================================")
-    print(f"pipeline:{pip}, time consume:{e-s}")
+    print(f"pipeline:{pip}, time consume:{e-s}s")
 
