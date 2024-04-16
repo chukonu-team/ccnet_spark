@@ -79,7 +79,7 @@ if __name__ == "__main__":
     print(f"pipline is:{pip}")
     config = Config(
             isSample=False,
-            n_segments=10,
+            n_segments=40,
             sampleRate=0.01,
             cache_dir="../../cached_data/",
             output_dir="../../cached_data/",
@@ -98,10 +98,6 @@ if __name__ == "__main__":
     # res=random_row.collect()
     # random_row = pipeline.df.orderBy(rand()).limit(1)
     # random_row = pipeline.df.rdd.takeSample(False, 1, seed=42)
-
-
-
-
     pipeline.timer()
     # pipeline.save_to_tmp()
     # res=pipeline.df.select("url").rdd.count()

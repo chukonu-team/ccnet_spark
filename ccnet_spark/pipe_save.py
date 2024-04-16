@@ -14,7 +14,7 @@ def save_tmp(
 
     save_type = "hdfs" if use_hdfs else "file"
     saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
-    saved_sdf_path = os.path.join(output_dir,"tmp_parquet",dump,saved_sdf_name)
+    saved_sdf_path = os.path.join(output_dir,"result_tmp_parquet",dump,saved_sdf_name)
     saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
     if not os.path.exists(saved_sdf_path):
         os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
@@ -33,7 +33,7 @@ def save_partation(
 ):
     save_type = "hdfs" if use_hdfs else "file"
     saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
-    saved_sdf_path = os.path.join(output_dir,"sdf_parquet",dump,saved_sdf_name)
+    saved_sdf_path = os.path.join(output_dir,"result_sdf_parquet",dump,saved_sdf_name)
     saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
     if not os.path.exists(saved_sdf_path):
         os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)

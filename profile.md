@@ -58,3 +58,15 @@
 - pipeline:['real_len', 'hash', 'dedup_keep'], time consume:115.58s
 - pipeline:['real_len', 'hash', 'dedup_keep', 'lid'], time consume:142.949s
 - pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp'], time consume:242.0s
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm'], time consume:271.934s
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket'], time consume:288.895s
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:728.608s,first time
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:659.178s,second time
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:286.587s,third time
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:285.602s,4 time
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:1010.266s,user save to parquet
+
+## 采用40segment 100% 采样率，400000左右文档数量
+
+- pipeline:['real_len', 'hash'], time consume:405.169s
+- pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp'], time consume:809.69s,峰值45.7GB
