@@ -73,3 +73,7 @@ lm开始cpu空转比例较高。
 - pipeline:['real_len', 'hash'], time consume:405.169s
 - pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp'], time consume:809.69s,峰值45.7GB
 - pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:3514.532s,峰值65.6GB，似乎lm 耗时比较大，load model?没有cpu消耗
+
+### nvme 10seg
+
+pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:1826.61s
