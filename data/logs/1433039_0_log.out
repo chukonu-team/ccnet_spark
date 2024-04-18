@@ -1,2 +1,0 @@
-submitit INFO (2024-04-18 13:59:54,898) - Starting with JobEnvironment(job_id=1433039, hostname=node0, local_rank=0(1), node=0(1), global_rank=0(1))
-submitit INFO (2024-04-18 13:59:54,898) - Loading pickle: /root/wxl_folder/ccnet_spark/data/logs/1433039_submitted.pkl
