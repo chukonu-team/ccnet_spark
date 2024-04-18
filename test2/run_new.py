@@ -63,7 +63,7 @@ spark = (
     .config("spark.driver.memory", "60g")
     .config("spark.driver.maxResultSize", "60g")
     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-    .config("spark.sql.autoBroadcastJoinThreshold","-1")
+    # .config("spark.sql.autoBroadcastJoinThreshold","-1")
     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
     # .config("spark.driver.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
     .getOrCreate()
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     print(f"pipline is:{pip}")
     config = Config(
         isSample=False,
-        n_segments=40,
+        n_segments=10,
         sampleRate=0.01,
         cache_dir="/metadata0/wxl_data/cached_data/",
         output_dir="/metadata0/wxl_data/cached_data/",
@@ -88,8 +88,8 @@ if __name__ == "__main__":
     )
 
     pipeline = Pipeline(config, spark)
-    s = time.time()
     df = pipeline.load_data()
+    s = time.time()
     pipeline.run_pipeline()
     # random_row = pipeline.df.sample(fraction=0.00001, seed=42)
     # res=random_row.collect()

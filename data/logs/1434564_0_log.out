@@ -1,0 +1,4 @@
+submitit INFO (2024-04-18 14:02:19,671) - Starting with JobEnvironment(job_id=1434564, hostname=node0, local_rank=0(1), node=0(1), global_rank=0(1))
+submitit INFO (2024-04-18 14:02:19,671) - Loading pickle: /root/wxl_folder/ccnet_spark/data/logs/1434564_submitted.pkl
+submitit INFO (2024-04-18 14:02:19,926) - Job completed successfully
+submitit INFO (2024-04-18 14:02:19,926) - Exiting after successful completion

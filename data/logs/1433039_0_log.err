@@ -1,0 +1,53 @@
+/usr/lib/python3/dist-packages/requests/__init__.py:89: RequestsDependencyWarning: urllib3 (2.2.1) or chardet (5.2.0) doesn't match a supported version!
+  warnings.warn("urllib3 ({}) or chardet ({}) doesn't match a supported "
+2024-04-18 13:59 INFO 1433041:cc_net.jsonql - Opening /root/wxl_folder/cached_data/2019-18/wet_2019-18.paths.gz with mode 'rt'
+2024-04-18 13:59 INFO 1433041:cc_net.jsonql - Opening /root/wxl_folder/cached_data/2019-18/CC-MAIN-20190418101243-20190418122248-00011.warc.wet.gz with mode 'rt'
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/jsonql.py", line 285, in map
+    yield self(x)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/jsonql.py", line 245, in __call__
+    y = self.do(x)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/dedup.py", line 355, in do
+    doc_hashes = compute_hashes(doc.get(self.field))
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/dedup.py", line 282, in compute_hashes
+    hashes = np.fromiter(
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/dedup.py", line 284, in <genexpr>
+    hashlib.sha1(bytes(normalize_for_dedup(l), encoding="utf-8")).digest()[
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/text_normalizer.py", line 190, in normalize_for_dedup
+    line = DIGIT_RE.sub("0", line)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/usr/local/lib/python3.8/dist-packages/submitit/core/_submit.py", line 11, in <module>
+    submitit_main()
+  File "/usr/local/lib/python3.8/dist-packages/submitit/core/submission.py", line 76, in submitit_main
+    process_job(args.folder)
+  File "/usr/local/lib/python3.8/dist-packages/submitit/core/submission.py", line 55, in process_job
+    result = delayed.result()
+  File "/usr/local/lib/python3.8/dist-packages/submitit/core/utils.py", line 133, in result
+    self._result = self.function(*self.args, **self.kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/mine.py", line 273, in _hashes_shard
+    jsonql.run_pipes(
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/jsonql.py", line 454, in run_pipes
+    write_jsons(data, output)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/jsonql.py", line 495, in write_jsons
+    for res in source:
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/jsonql.py", line 285, in map
+    yield self(x)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/jsonql.py", line 317, in __exit__
+    self.close()
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/dedup.py", line 363, in close
+    self.hashes.dump(self.output)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/flat_hash_set.py", line 166, in dump
+    return self.dump_gp(filename)
+  File "/usr/local/lib/python3.8/dist-packages/cc_net/flat_hash_set.py", line 172, in dump_gp
+    return gp.Dict.dump(self, str(filename))
+  File "/usr/local/lib/python3.8/dist-packages/getpy/getpy.py", line 94, in dump
+    return self.__dict.dump(filename)
+KeyboardInterrupt

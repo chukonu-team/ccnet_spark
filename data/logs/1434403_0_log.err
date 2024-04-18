@@ -1,0 +1,9 @@
+/usr/lib/python3/dist-packages/requests/__init__.py:89: RequestsDependencyWarning: urllib3 (2.2.1) or chardet (5.2.0) doesn't match a supported version!
+  warnings.warn("urllib3 ({}) or chardet ({}) doesn't match a supported "
+2024-04-18 14:02 INFO 1434405:cc_net.jsonql - Opening /root/wxl_folder/cached_data/2019-18/wet_2019-18.paths.gz with mode 'rt'
+2024-04-18 14:02 INFO 1434405:HashesCollector - Processed 0 documents in 8.4e-06h (  0.0 doc/s).
+2024-04-18 14:02 INFO 1434405:HashesCollector - Found 0k unique hashes over 0k lines. Using 0.1GB of RAM.
+/usr/local/lib/python3.8/dist-packages/cc_net/mine.py:227: UserWarning: Targeted tmp output data/hashes/2019-18/0001.tmp.bin doesn't exists.
+  warnings.warn(f"Targeted tmp output {tmp_output} doesn't exists.")
+2024-04-18 14:02 INFO 1434405:submitit - Job completed successfully
+2024-04-18 14:02 INFO 1434405:submitit - Exiting after successful completion
