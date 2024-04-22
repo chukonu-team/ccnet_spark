@@ -25,6 +25,7 @@ class PipelineStep(Enum):
     LM = "lm"
     PP_BUCKET = "pp_bucket"
     DROP = "drop"
+    UNKNOWN = "unknown"
 
 
 DEFAULT_PIPELINE = [
@@ -122,6 +123,8 @@ class Pipeline:
         elif (self.pipelines[-1] == PipelineStep.DROP):
             self.df=self.df.withColumn("raw_line_id_len", F.size(self.df["raw_line_id"]))
             _=self.df.select("length","nlines",'raw_line_id_len','original_length','original_nlines','lang','score',"bucket").rdd.count()
+        elif (self.pipelines[-1] == PipelineStep.UNKNOWN):
+            _=self.df.rdd.count()
         else:
             print("unknown pipeline")
     def load_data(self):

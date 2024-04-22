@@ -2,7 +2,7 @@ from ccnet_spark.pipe_line import Pipeline, Config, PipelineStep
 import time
 from pyspark.sql import SparkSession
 import sys
-
+import subprocess
 
 def getPIP(index):
     pips = [
@@ -52,6 +52,16 @@ def getPIP(index):
             PipelineStep.PP_BUCKET,
             PipelineStep.DROP,
         ],
+        [
+            PipelineStep.REAL_LEN,
+            PipelineStep.HASH,
+            PipelineStep.DEDUP_KEEP,
+            PipelineStep.LID,
+            PipelineStep.SP,
+            PipelineStep.LM,
+            PipelineStep.PP_BUCKET,
+            PipelineStep.UNKNOWN,
+        ],
     ]
     return pips[index]
 
@@ -59,9 +69,10 @@ def getPIP(index):
 spark = (
     SparkSession.builder.appName("ccnetspark_local_profile")
     .master("local[*]")
-    .config("spark.executor.memory", "100g")
-    .config("spark.driver.memory", "60g")
-    .config("spark.driver.maxResultSize", "60g")
+    .config("spark.executor.memory", "110g")
+    .config("spark.driver.memory", "110g")
+    .config("spark.dynamicAllocation.enabled", "false")
+    .config("spark.driver.maxResultSize", "110g")
     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
     # .config("spark.sql.autoBroadcastJoinThreshold","-1")
     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
@@ -74,9 +85,13 @@ if __name__ == "__main__":
     index = int(sys.argv[1])
     pip = getPIP(index)
     print(f"pipline is:{pip}")
+    # 执行命令并将输出重定向到文件
+    subprocess.run(["bash", "/app/io_nvme.sh"], stdout=open("/app/old_nvme.log", "w"))
+
+
     config = Config(
         isSample=False,
-        n_segments=10,
+        n_segments=2,
         sampleRate=0.01,
         cache_dir="/metadata0/wxl_data/cached_data/",
         output_dir="/metadata0/wxl_data/cached_data/",
@@ -95,10 +110,12 @@ if __name__ == "__main__":
     # res=random_row.collect()
     # random_row = pipeline.df.orderBy(rand()).limit(1)
     # random_row = pipeline.df.rdd.takeSample(False, 1, seed=42)
-    # pipeline.timer()
+    pipeline.timer()
     # pipeline.save_to_tmp()
     # res=pipeline.df.select("url").rdd.count()
-    pipeline.save_data()
+    # pipeline.save_data()
     e = time.time()
     print("==============================================")
     print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
+    subprocess.run(["bash", "/app/io_nvme.sh"], stdout=open("/app/new_nvme.log", "w"))
+    subprocess.run(["bash", "/app/calculate.sh"])
