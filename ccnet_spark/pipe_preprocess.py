@@ -8,8 +8,10 @@ import logging
 import requests
 from io import BytesIO
 from tqdm import tqdm
-
+from multiprocessing import Pool, cpu_count
+from functools import partial
 from .util import convert_to_absolute_path
+import re
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(process)d:%(name)s - %(message)s",
@@ -57,23 +59,27 @@ def get_segment_path(dump:str,cache_dir:str,segment:int):
         for index,line in enumerate(bytes_data):
             # 解码每一行（路径），这里假设文件是以UTF-8编码的
             segment_path = line.decode('utf-8').strip()
-            # print(index,path)  # 打印路径，或者在这里进行其他处理
-            if(index==segment):
-                download_url=os.path.join(ROOT_DIR,segment_path)
-                file_name=download_url.split("/")[-1]
-                file_path_saved =os.path.join(cache_dir, 'commoncrawl_data', dump,file_name)
-                if not os.path.exists(file_path_saved):
-                    # 下载WET.paths.gz文件
-                    response = requests.get(download_url, stream=True)
-                    if response.status_code == 200:
-                        with open(file_path_saved, 'wb') as file:
-                            total_size = int(response.headers.get('content-length', 0))
-                            with tqdm(total=total_size, unit='B', unit_scale=True, desc=f'Downloading {file_name}', ascii=True) as pbar:
-                                for data in response.iter_content(chunk_size=1024):
-                                    file.write(data)
-                                    pbar.update(len(data))
-                        print(f"Downloaded {file_path_saved}")
-                return file_path_saved
+            pattern = r"-(\d+)\.warc"
+            match = re.search(pattern, segment_path)
+            if match:
+                segment_number = match.group(1)
+                segment_number=int(segment_number)
+                if(segment_number==segment):
+                    download_url=os.path.join(ROOT_DIR,segment_path)
+                    file_name=download_url.split("/")[-1]
+                    file_path_saved =os.path.join(cache_dir, 'commoncrawl_data', dump,file_name)
+                    if not os.path.exists(file_path_saved):
+                        # 下载WET.paths.gz文件
+                        response = requests.get(download_url, stream=True)
+                        if response.status_code == 200:
+                            with open(file_path_saved, 'wb') as file:
+                                total_size = int(response.headers.get('content-length', 0))
+                                with tqdm(total=total_size, unit='B', unit_scale=True, desc=f'Downloading {file_name}', ascii=True) as pbar:
+                                    for data in response.iter_content(chunk_size=1024):
+                                        file.write(data)
+                                        pbar.update(len(data))
+                            print(f"Downloaded {file_path_saved}")
+                    return file_path_saved
     return None
 
 def _close_when_exhausted(file: TextIO) -> Iterable[str]:
@@ -245,6 +251,36 @@ def load_segment2sdf(
     )
     return spark_df
 
+def pre_download_segment2pdf(
+    segment: int,
+    cache_dir: str,
+    dump: str = "2019-09",
+    isSample: bool = False,
+    sampleRate: float = 0.1,
+    min_len: int = 300,
+):
+    cache_pdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) +"_segment_"+ str(segment)+"_min_len_"+str(min_len)+".parquet"
+    cache_pdf_path = os.path.join(cache_dir,"pdf_parquet",dump,cache_pdf_name)
+
+     # 设置输出路径
+    if not os.path.exists(cache_pdf_path):
+        segmentPath = get_segment_path(
+            dump=dump,
+            cache_dir=cache_dir,
+            segment=segment
+        )
+        segmentName=segmentPath.split("/")[-1].split(".")[0]
+        segmentPath = Path(segmentPath)
+        segmentFile = open_read(segmentPath)
+        pandas_df = parse_warc_file(segmentFile,segmentName, min_len=min_len)
+        if isSample:
+            sampleCount = int(sampleRate * len(pandas_df))
+            pandas_df = pandas_df.sample(n=sampleCount, random_state=1)
+        pandas_df.to_parquet(cache_pdf_path)  # 保存为 parquet 文件
+
+def load_segment2pdf_wrapper(segment,cache_dir, dump, isSample, sampleRate, min_len):
+    return pre_download_segment2pdf(segment, cache_dir, dump, isSample, sampleRate, min_len)
+
 def load_segments(
     spark,
     segments: List[int],
@@ -254,6 +290,20 @@ def load_segments(
     sampleRate: float = 0.1,
     min_len: int = 300,
 ):
+    
+    ### 1.预处理to pdf
+    num_processes = cpu_count()
+    cache_pdf_path = os.path.join(cache_dir,"pdf_parquet",dump)
+    os.makedirs(cache_pdf_path, exist_ok=True)
+    # 创建进程池
+    with Pool(processes=num_processes) as pool:
+        # 部分应用函数，以便在进程池中并行执行
+        partial_load_segment2pdf = partial(load_segment2pdf_wrapper, cache_dir=cache_dir,dump=dump,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
+        # 并行执行任务
+        pool.map(partial_load_segment2pdf, segments)
+    ### 2. 预处理到sdf
+
+
     merged_sdf = None
     for seg in segments:
         sdf = load_segment2sdf(

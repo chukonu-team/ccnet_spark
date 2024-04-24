@@ -96,3 +96,22 @@ pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'dro
 Disk nvme0n1 差值: 21.60 GB (读取), 138.83 GB (写入)
 Disk nvme1n1 差值: 608.61 GB (读取), 4.10 GB (写入)
 2024-04-23 03:09 INFO 20:py4j.clientserver - Closing down clientserver connection
+
+## 40segment9pip all write to parquet 2
+
+pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:2304.545s
+Disk nvme0n1 差值: 21.60 GB (读取), 138.83 GB (写入)
+Disk nvme1n1 差值: 608.61 GB (读取), 4.10 GB (写入)
+2024-04-23 03:09 INFO 20:py4j.clientserver - Closing down clientserver connection
+
+## 40segment9pip all write to parquet 3
+
+pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:2376.43s
+Disk nvme0n1 差值: 14.09 GB (读取), 139.24 GB (写入)
+Disk nvme1n1 差值: 660.43 GB (读取), 4.12 GB (写入)
+
+## cc_net pure,40 segment
+
+耗时11.48-15:10=3小时+
+Disk nvme0n1 差值: 1.38 GB (读取), .06 GB (写入)
+Disk nvme1n1 差值: 560.97 GB (读取), 56.64 GB (写入)

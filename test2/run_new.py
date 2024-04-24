@@ -65,7 +65,6 @@ def getPIP(index):
     ]
     return pips[index]
 
-
 spark = (
     SparkSession.builder.appName("ccnetspark_local_profile")
     .master("local[*]")
@@ -103,17 +102,17 @@ if __name__ == "__main__":
     )
 
     pipeline = Pipeline(config, spark)
-    df = pipeline.load_data()
     s = time.time()
+    df = pipeline.load_data()
     pipeline.run_pipeline()
     # random_row = pipeline.df.sample(fraction=0.00001, seed=42)
     # res=random_row.collect()
     # random_row = pipeline.df.orderBy(rand()).limit(1)
     # random_row = pipeline.df.rdd.takeSample(False, 1, seed=42)
-    # pipeline.timer()
+    pipeline.timer()
     # pipeline.save_to_tmp()
     # res=pipeline.df.select("url").rdd.count()
-    pipeline.save_data()
+    # pipeline.save_data()
     e = time.time()
     print("==============================================")
     print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
