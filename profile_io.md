@@ -115,3 +115,20 @@ Disk nvme1n1 差值: 660.43 GB (读取), 4.12 GB (写入)
 耗时11.48-15:10=3小时+
 Disk nvme0n1 差值: 1.38 GB (读取), .06 GB (写入)
 Disk nvme1n1 差值: 560.97 GB (读取), 56.64 GB (写入)
+
+## cc_net spark parquet
+
+pipeline:['real_len', 'hash', 'dedup_keep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:2398.2s
+Disk nvme0n1 差值: 26.38 GB (读取), 134.13 GB (写入)
+Disk nvme1n1 差值: 621.67 GB (读取), 4.11 GB (写入)
+
+## cc_net spark parquet no keep
+
+pipeline:['real_len', 'hash', 'dedup_nokeep', 'lid', 'sp', 'lm', 'pp_bucket', 'drop'], time consume:2113.287s
+Disk nvme0n1 差值: 10.45 GB (读取), 57.25 GB (写入)
+Disk nvme1n1 差值: 597.19 GB (读取), 3.56 GB (写入)
+
+## vs
+
+ccnet 40 seg hash + dedup 耗时:40min====>任务调度有问题
+spark 40 seg hash + dedup 耗时:10min

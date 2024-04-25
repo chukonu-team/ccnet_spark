@@ -62,6 +62,16 @@ def getPIP(index):
             PipelineStep.PP_BUCKET,
             PipelineStep.UNKNOWN,
         ],
+        [
+            PipelineStep.REAL_LEN,
+            PipelineStep.HASH,
+            PipelineStep.DEDUP_NOKEEP,
+            PipelineStep.LID,
+            PipelineStep.SP,
+            PipelineStep.LM,
+            PipelineStep.PP_BUCKET,
+            PipelineStep.DROP,
+        ],
     ]
     return pips[index]
 
