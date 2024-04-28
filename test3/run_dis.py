@@ -91,16 +91,16 @@ spark = (
 
 if __name__ == "__main__":
     # 从命令行参数中获取索引
-    index = int(sys.argv[1])
+    index = 3
     pip = getPIP(index)
     print(f"pipline is:{pip}")
     # 执行命令并将输出重定向到文件
-    subprocess.run(["bash", "/app/io_nvme.sh"], stdout=open("/app/old_nvme.log", "w"))
+    subprocess.run(["bash", "/root/wxl_folder/io_nvme.sh"], stdout=open("/root/wxl_folder/old_nvme.log", "w"))
 
 
     config = Config(
         isSample=False,
-        n_segments=40,
+        n_segments=1,
         sampleRate=0.01,
         cache_dir="/metadata0/wxl_data/cached_data/",
         output_dir="/metadata0/wxl_data/cached_data/",
@@ -126,5 +126,5 @@ if __name__ == "__main__":
     e = time.time()
     print("==============================================")
     print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
-    subprocess.run(["bash", "/app/io_nvme.sh"], stdout=open("/app/new_nvme.log", "w"))
-    subprocess.run(["bash", "/app/calculate.sh"])
+    subprocess.run(["bash", "/root/wxl_folder/io_nvme.sh"], stdout=open("/root/wxl_folder/new_nvme.log", "w"))
+    subprocess.run(["bash", "/root/wxl_folder/calculate.sh"])
