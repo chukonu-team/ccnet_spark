@@ -77,11 +77,11 @@ def getPIP(index):
 
 spark = (
     SparkSession.builder.appName("ccnetspark_local_profile")
-    .master("local[*]")
-    .config("spark.executor.memory", "60g")
-    .config("spark.driver.memory", "60g")
+    # .master("local[*]")
+    .config("spark.executor.memory", "10g")
+    .config("spark.driver.memory", "10g")
     .config("spark.dynamicAllocation.enabled", "false")
-    .config("spark.driver.maxResultSize", "50g")
+    .config("spark.driver.maxResultSize", "5g")
     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
     # .config("spark.sql.autoBroadcastJoinThreshold","-1")
     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
@@ -91,11 +91,11 @@ spark = (
 
 if __name__ == "__main__":
     # 从命令行参数中获取索引
-    index = 3
+    index = 8
     pip = getPIP(index)
     print(f"pipline is:{pip}")
     # 执行命令并将输出重定向到文件
-    subprocess.run(["bash", "/root/wxl_folder/io_nvme.sh"], stdout=open("/root/wxl_folder/old_nvme.log", "w"))
+    # subprocess.run(["bash", "/root/wxl_folder/io_nvme.sh"], stdout=open("/root/wxl_folder/old_nvme.log", "w"))
 
 
     config = Config(
@@ -126,5 +126,5 @@ if __name__ == "__main__":
     e = time.time()
     print("==============================================")
     print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
-    subprocess.run(["bash", "/root/wxl_folder/io_nvme.sh"], stdout=open("/root/wxl_folder/new_nvme.log", "w"))
-    subprocess.run(["bash", "/root/wxl_folder/calculate.sh"])
+    # subprocess.run(["bash", "/root/wxl_folder/io_nvme.sh"], stdout=open("/root/wxl_folder/new_nvme.log", "w"))
+    # subprocess.run(["bash", "/root/wxl_folder/calculate.sh"])
