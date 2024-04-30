@@ -16,12 +16,12 @@ UPLOAD_PATH=/data0/k8s/node0_data/spark-job/$PROJECT_NAME
 # 程序路径，自定义
 WORKDIR=/root/wxl_folder/$PROJECT_NAME
 # 程序路径，自定义
-MAIN_PATH=$WORKDIR/test3/disme.py
+MAIN_PATH=$WORKDIR/test3/run_dis.py
 
 # 数据本地路径
 LOCAL_DIR_0_PATH=/data0/k8s/node0_data
 # 数据本地子路径 ， 和LOCAL_DIR_0_PATH 拼接成完成本地目录
-LOCAL_DIR_0_SUB_PATH=minhash
+LOCAL_DIR_0_SUB_PATH=ccnet_spark
 # 容器内目录，程序中读取数据使用该目录，和上面的 "LOCAL_DIR_0_PATH/LOCAL_DIR_0_SUB_PATH" 路径映射
 LOCAL_DIR_0_MOUNT_PATH=/opt/spark/work-dir/data
 
@@ -36,7 +36,7 @@ EXECUTOR_MEMORY="7g"
 OFFSIZE="1g"
 
 # spark 镜像保持不变，如果要推送镜像，请不要使用3.4.1版本，例如可以使用 wangshd-3.4.1
-IMAGE=registry.cn-hangzhou.aliyuncs.com/houdu_bigdata/spark-py:3.4.1-base
+IMAGE=registry.cn-hangzhou.aliyuncs.com/houdu_bigdata/spark-py:3.4.1-ccnet-1.0
 # 镜像仓库凭证保持不变
 IMAGE_PULLSECRETS=registrykey
 # 保持不变
