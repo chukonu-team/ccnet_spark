@@ -91,7 +91,7 @@ spark = (
 
 if __name__ == "__main__":
     # 从命令行参数中获取索引
-    index = 8
+    index = 0
     pip = getPIP(index)
     print(f"pipline is:{pip}")
     # 执行命令并将输出重定向到文件
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     config = Config(
         isSample=False,
-        n_segments=1,
+        n_segments=4,
         sampleRate=0.01,
         cache_dir="/opt/spark/work-dir/data/cached_data/",
         output_dir="/opt/spark/work-dir/data/cached_data/",
