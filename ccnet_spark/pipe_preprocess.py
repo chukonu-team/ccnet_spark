@@ -219,7 +219,12 @@ def load_segment2pdf(
         f"load segment {segment}, {len(pandas_df)} docs, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with dump:{dump}"
     )
     return pandas_df
-
+def check_hdfs_path_exists(hdfs_client, hdfs_path):
+    try:
+        hdfs_client.status(hdfs_path)
+        return True
+    except:
+        return False
 def load_segment2sdf(
     spark,
     segment: int,
@@ -228,28 +233,50 @@ def load_segment2sdf(
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_url:str="http://node0:9870",
 ):
     cache_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) +"_segment_"+ str(segment)+"_min_len_"+str(min_len)+".parquet"
     cache_sdf_path = os.path.join(cache_dir,"sdf_parquet",dump,cache_sdf_name)
     cache_sdf_path = convert_to_absolute_path(cache_sdf_path)
-    if not os.path.exists(cache_sdf_path):
-        os.makedirs("/".join(cache_sdf_path.split("/")[:-1]), exist_ok=True)
-        pandas_df = load_segment2pdf(
-            segment=segment,
-            cache_dir=cache_dir,
-            dump=dump,
-            isSample=isSample,
-            sampleRate=sampleRate,
-            min_len=min_len,
+    if use_hdfs:
+        hdfs_client = InsecureClient(hdfs_url)
+        if(check_hdfs_path_exists(hdfs_client,cache_sdf_path)):
+            spark_df = spark.read.parquet(f"hdfs:///{cache_sdf_path}")
+        else:
+            pandas_df = load_segment2pdf(
+                segment=segment,
+                cache_dir=cache_dir,
+                dump=dump,
+                isSample=isSample,
+                sampleRate=sampleRate,
+                min_len=min_len,
+            )
+            spark_df = spark.createDataFrame(pandas_df)
+            spark_df.write.parquet(f"hdfs:///{cache_sdf_path}")
+        logging.info(
+            f"load segment {segment} from hdfs, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with date:{dump}"
         )
-        spark_df = spark.createDataFrame(pandas_df)
-        spark_df.write.parquet(f"file:///{cache_sdf_path}")
+        return spark_df
     else:
-        spark_df = spark.read.parquet(f"file:///{cache_sdf_path}")
-    logging.info(
-        f"load segment {segment}, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with date:{dump}"
-    )
-    return spark_df
+        if not os.path.exists(cache_sdf_path):
+            os.makedirs("/".join(cache_sdf_path.split("/")[:-1]), exist_ok=True)
+            pandas_df = load_segment2pdf(
+                segment=segment,
+                cache_dir=cache_dir,
+                dump=dump,
+                isSample=isSample,
+                sampleRate=sampleRate,
+                min_len=min_len,
+            )
+            spark_df = spark.createDataFrame(pandas_df)
+            spark_df.write.parquet(f"file:///{cache_sdf_path}")
+        else:
+            spark_df = spark.read.parquet(f"file:///{cache_sdf_path}")
+        logging.info(
+            f"load segment {segment}, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with date:{dump}"
+        )
+        return spark_df
 
 def pre_download_segment2pdf(
     segment: int,
@@ -289,19 +316,21 @@ def load_segments(
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_url:str="http://node0:9870",
 ):
     
-    ### 1.预处理to pdf
-    num_processes = cpu_count()
-    cache_pdf_path = os.path.join(cache_dir,"pdf_parquet",dump)
-    os.makedirs(cache_pdf_path, exist_ok=True)
-    # 创建进程池
-    with Pool(processes=num_processes) as pool:
-        # 部分应用函数，以便在进程池中并行执行
-        partial_load_segment2pdf = partial(load_segment2pdf_wrapper, cache_dir=cache_dir,dump=dump,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
-        # 并行执行任务
-        pool.map(partial_load_segment2pdf, segments)
-    ### 2. 预处理到sdf
+    # ### 1.预处理to pdf
+    # num_processes = cpu_count()
+    # cache_pdf_path = os.path.join(cache_dir,"pdf_parquet",dump)
+    # os.makedirs(cache_pdf_path, exist_ok=True)
+    # # 创建进程池
+    # with Pool(processes=num_processes) as pool:
+    #     # 部分应用函数，以便在进程池中并行执行
+    #     partial_load_segment2pdf = partial(load_segment2pdf_wrapper, cache_dir=cache_dir,dump=dump,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
+    #     # 并行执行任务
+    #     pool.map(partial_load_segment2pdf, segments)
+    # ### 2. 预处理到sdf
 
 
     merged_sdf = None
@@ -314,6 +343,8 @@ def load_segments(
             isSample=isSample,
             sampleRate=sampleRate,
             min_len=min_len,
+            use_hdfs=use_hdfs,
+            hdfs_url=hdfs_url,
         )
         if merged_sdf:
             merged_sdf = merged_sdf.unionAll(sdf)  # Merge DataFrames
