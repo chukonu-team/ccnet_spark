@@ -12,6 +12,7 @@ from multiprocessing import Pool, cpu_count
 from functools import partial
 from .util import convert_to_absolute_path
 import re
+from hdfs import InsecureClient
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(process)d:%(name)s - %(message)s",
@@ -219,7 +220,12 @@ def load_segment2pdf(
         f"load segment {segment}, {len(pandas_df)} docs, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with dump:{dump}"
     )
     return pandas_df
-
+def check_hdfs_path_exists(hdfs_client, hdfs_path):
+    try:
+        hdfs_client.status(hdfs_path)
+        return True
+    except:
+        return False
 def load_segment2sdf(
     spark,
     segment: int,
@@ -228,28 +234,61 @@ def load_segment2sdf(
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_http_url:str="http://node0:9870",
+    hdfs_hdfs_url:str="hdfs://node0:9898",
+    hdfs_dir:str="/"
 ):
-    cache_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) +"_segment_"+ str(segment)+"_min_len_"+str(min_len)+".parquet"
-    cache_sdf_path = os.path.join(cache_dir,"sdf_parquet",dump,cache_sdf_name)
-    cache_sdf_path = convert_to_absolute_path(cache_sdf_path)
-    if not os.path.exists(cache_sdf_path):
-        os.makedirs("/".join(cache_sdf_path.split("/")[:-1]), exist_ok=True)
-        pandas_df = load_segment2pdf(
-            segment=segment,
-            cache_dir=cache_dir,
-            dump=dump,
-            isSample=isSample,
-            sampleRate=sampleRate,
-            min_len=min_len,
+    if use_hdfs:
+        cache_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) +"_segment_"+ str(segment)+"_min_len_"+str(min_len)+".parquet"
+        cache_sdf_path = os.path.join(hdfs_dir,"hdfs_sdf_parquet",dump,cache_sdf_name)
+        hdfs_client = InsecureClient(hdfs_http_url)
+        if(check_hdfs_path_exists(hdfs_client,"/")):
+            print("Client connected successfully to HDFS.")
+        else:
+            print("Failed to connect to HDFS")
+            return
+        if(check_hdfs_path_exists(hdfs_client,cache_sdf_path)):
+            print("load hdfs url from cached parquet")
+            spark_df = spark.read.parquet(f"{hdfs_hdfs_url}{cache_sdf_path}")
+        else:
+            print("load hdfs url from pandas parquet")
+            pandas_df = load_segment2pdf(
+                segment=segment,
+                cache_dir=cache_dir,
+                dump=dump,
+                isSample=isSample,
+                sampleRate=sampleRate,
+                min_len=min_len,
+            )
+            spark_df = spark.createDataFrame(pandas_df)
+            spark_df.write.mode("overwrite").parquet(f"{hdfs_hdfs_url}{cache_sdf_path}")
+        logging.info(
+            f"load segment {segment} from hdfs, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with date:{dump}"
         )
-        spark_df = spark.createDataFrame(pandas_df)
-        spark_df.write.parquet(f"file:///{cache_sdf_path}")
+        return spark_df
     else:
-        spark_df = spark.read.parquet(f"file:///{cache_sdf_path}")
-    logging.info(
-        f"load segment {segment}, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with date:{dump}"
-    )
-    return spark_df
+        cache_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) +"_segment_"+ str(segment)+"_min_len_"+str(min_len)+".parquet"
+        cache_sdf_path = os.path.join(cache_dir,"sdf_parquet",dump,cache_sdf_name)
+        cache_sdf_path = convert_to_absolute_path(cache_sdf_path) # //convert path
+        if not os.path.exists(cache_sdf_path):
+            os.makedirs("/".join(cache_sdf_path.split("/")[:-1]), exist_ok=True)
+            pandas_df = load_segment2pdf(
+                segment=segment,
+                cache_dir=cache_dir,
+                dump=dump,
+                isSample=isSample,
+                sampleRate=sampleRate,
+                min_len=min_len,
+            )
+            spark_df = spark.createDataFrame(pandas_df)
+            spark_df.write.parquet(f"file:///{cache_sdf_path}")
+        else:
+            spark_df = spark.read.parquet(f"file:///{cache_sdf_path}")
+        logging.info(
+            f"load segment {segment}, with sampleRate:{sampleRate*100 if isSample else 100 }%,min_len:{min_len},with date:{dump}"
+        )
+        return spark_df
 
 def pre_download_segment2pdf(
     segment: int,
@@ -289,19 +328,23 @@ def load_segments(
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_http_url:str="http://node0:9870",
+    hdfs_hdfs_url:str="hdfs://node0:9898",
+    hdfs_dir:str="/"
 ):
     
-    ### 1.预处理to pdf
-    num_processes = cpu_count()
-    cache_pdf_path = os.path.join(cache_dir,"pdf_parquet",dump)
-    os.makedirs(cache_pdf_path, exist_ok=True)
-    # 创建进程池
-    with Pool(processes=num_processes) as pool:
-        # 部分应用函数，以便在进程池中并行执行
-        partial_load_segment2pdf = partial(load_segment2pdf_wrapper, cache_dir=cache_dir,dump=dump,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
-        # 并行执行任务
-        pool.map(partial_load_segment2pdf, segments)
-    ### 2. 预处理到sdf
+    # ### 1.预处理to pdf
+    # num_processes = cpu_count()
+    # cache_pdf_path = os.path.join(cache_dir,"pdf_parquet",dump)
+    # os.makedirs(cache_pdf_path, exist_ok=True)
+    # # 创建进程池
+    # with Pool(processes=num_processes) as pool:
+    #     # 部分应用函数，以便在进程池中并行执行
+    #     partial_load_segment2pdf = partial(load_segment2pdf_wrapper, cache_dir=cache_dir,dump=dump,isSample=isSample,sampleRate=sampleRate,min_len=min_len)
+    #     # 并行执行任务
+    #     pool.map(partial_load_segment2pdf, segments)
+    # ### 2. 预处理到sdf
 
 
     merged_sdf = None
@@ -314,6 +357,10 @@ def load_segments(
             isSample=isSample,
             sampleRate=sampleRate,
             min_len=min_len,
+            use_hdfs=use_hdfs,
+            hdfs_http_url=hdfs_http_url,
+            hdfs_hdfs_url=hdfs_hdfs_url,
+            hdfs_dir=hdfs_dir
         )
         if merged_sdf:
             merged_sdf = merged_sdf.unionAll(sdf)  # Merge DataFrames

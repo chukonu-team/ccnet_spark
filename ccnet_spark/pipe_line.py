@@ -54,6 +54,7 @@ class Config(NamedTuple):
     dump: str = "2019-09"
     cache_dir: str = "../cache_data/"
     output_dir: str = "../cache_data/"
+    hdfs_dir:str = "/data0/k8s/node0_data/ccnet_spark/cached_data/"
     min_len: int = 300
     isSample: bool = False
     sampleRate: float = 0.01
@@ -66,7 +67,8 @@ class Config(NamedTuple):
     percentile_head: int = 30
     percentile_tail: int = 60
     use_hdfs: bool = False
-
+    hdfs_http_url:str="http://node0:9870"
+    hdfs_hdfs_url:str="hdfs://node0:9898"
 
 class Pipeline:
     def __init__(self, config: Config, spark: SparkSession):
@@ -87,6 +89,9 @@ class Pipeline:
         self.percentile_tail = config.percentile_tail
         self.spark = spark
         self.use_hdfs = config.use_hdfs
+        self.hdfs_dir= config.hdfs_dir
+        self.hdfs_hdfs_url=config.hdfs_hdfs_url
+        self.hdfs_http_url=config.hdfs_http_url
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -136,6 +141,10 @@ class Pipeline:
             isSample=self.isSample,
             sampleRate=self.sampleRate,
             min_len=self.min_len,
+            use_hdfs=self.use_hdfs,
+            hdfs_hdfs_url=self.hdfs_hdfs_url,
+            hdfs_http_url=self.hdfs_http_url,
+            hdfs_dir=self.hdfs_dir
         )
         self.origin_df = spark_df
         self.df = spark_df
@@ -247,23 +256,29 @@ class Pipeline:
     def save_to_tmp(self):
         save_tmp(
             self.df,
-            self.use_hdfs,
             self.output_dir,
             self.dump,
             self.isSample,
             self.sampleRate,
             self.min_len,
+            use_hdfs=self.use_hdfs,
+            hdfs_hdfs_url=self.hdfs_hdfs_url,
+            hdfs_http_url=self.hdfs_http_url,
+            hdfs_dir=self.hdfs_dir
         )
 
     def save_data(self):
         save_partation(
             self.df,
-            self.use_hdfs,
             self.output_dir,
             self.dump,
             self.isSample,
             self.sampleRate,
             self.min_len,
+            use_hdfs=self.use_hdfs,
+            hdfs_hdfs_url=self.hdfs_hdfs_url,
+            hdfs_http_url=self.hdfs_http_url,
+            hdfs_dir=self.hdfs_dir
         )
 
     def load_partation_data(self, lang, bucket):
@@ -276,6 +291,10 @@ class Pipeline:
             self.isSample,
             self.sampleRate,
             self.min_len,
+            use_hdfs=self.use_hdfs,
+            hdfs_hdfs_url=self.hdfs_hdfs_url,
+            hdfs_http_url=self.hdfs_http_url,
+            hdfs_dir=self.hdfs_dir
         )
 
     def analy(self):

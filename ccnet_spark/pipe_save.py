@@ -4,47 +4,56 @@ from pyspark.sql import functions as F
 from .util import convert_to_absolute_path
 def save_tmp(
     spark_df,
-    use_hdfs:bool,
     output_dir: str,
     dump: str = "2019-09",
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_http_url:str="http://node0:9870",
+    hdfs_hdfs_url:str="hdfs://node0:9898",
+    hdfs_dir:str="/"
 ):
+    if use_hdfs:
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(hdfs_dir,"hdfs_tmp_sdf_parquet",dump,saved_sdf_name)
+        spark_df.write.mode("overwrite").parquet(f"{hdfs_hdfs_url}{saved_sdf_path}")
+    else:
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(output_dir,"tmp_sdf_parquet",dump,saved_sdf_name)
+        saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
 
-    save_type = "hdfs" if use_hdfs else "file"
-    saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
-    saved_sdf_path = os.path.join(output_dir,"result_tmp_parquet",dump,saved_sdf_name)
-    saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
-    if not os.path.exists(saved_sdf_path):
         os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
-    spark_df.write.mode("overwrite").parquet(
-            f"{save_type}:///{saved_sdf_path}"
-    )
-
+        spark_df.write.mode("overwrite").parquet(
+            f"{file}:///{saved_sdf_path}"
+        )
 def save_partation(
     spark_df,
-    use_hdfs:bool,
     output_dir: str,
     dump: str = "2019-09",
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_http_url:str="http://node0:9870",
+    hdfs_hdfs_url:str="hdfs://node0:9898",
+    hdfs_dir:str="/"
 ):
-    save_type = "hdfs" if use_hdfs else "file"
-    saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
-    saved_sdf_path = os.path.join(output_dir,"result_sdf_parquet",dump,saved_sdf_name)
-    saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
-    if not os.path.exists(saved_sdf_path):
+    if use_hdfs:
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(hdfs_dir,"hdfs_result_sdf_parquet",dump,saved_sdf_name)
+        spark_df.write.mode("overwrite").partitionBy("lang", "bucket").parquet(f"{hdfs_hdfs_url}{saved_sdf_path}")
+    else:
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(output_dir,"result_sdf_parquet",dump,saved_sdf_name)
+        saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
+
         os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
         spark_df.write.mode("overwrite").partitionBy("lang", "bucket").parquet(
-            f"{save_type}:///{saved_sdf_path}"
+            f"{file}:///{saved_sdf_path}"
         )
-
-
 def load_partation(
     spark,
-    use_hdfs:bool,
     lang,
     bucket,
     output_dir: str,
@@ -52,31 +61,48 @@ def load_partation(
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_http_url:str="http://node0:9870",
+    hdfs_hdfs_url:str="hdfs://node0:9898",
+    hdfs_dir:str="/"
 ):
-    save_type = "hdfs" if use_hdfs else "file"
-    saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
-    saved_sdf_path = os.path.join(output_dir,"sdf_parquet",dump,saved_sdf_name)
-    saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
-    if not os.path.exists(saved_sdf_path):
-        os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
-    df = spark.read.parquet(f"{save_type}:///{saved_sdf_path}/lang={lang}/bucket={bucket}")
+    if use_hdfs:
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(hdfs_dir,"hdfs_result_sdf_parquet",dump,saved_sdf_name)
+        df = spark.read.parquet(f"{hdfs_hdfs_url}{saved_sdf_path}/lang={lang}/bucket={bucket}")
+    else:
+        save_type = "hdfs" if use_hdfs else "file"
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(output_dir,"sdf_parquet",dump,saved_sdf_name)
+        saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
+        if not os.path.exists(saved_sdf_path):
+            os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
+        df = spark.read.parquet(f"{save_type}:///{saved_sdf_path}/lang={lang}/bucket={bucket}")
     return df
 def load_all(
     spark,
-    use_hdfs:bool,
     output_dir: str,
     dump: str = "2019-09",
     isSample: bool = False,
     sampleRate: float = 0.1,
     min_len: int = 300,
+    use_hdfs:bool=False,
+    hdfs_http_url:str="http://node0:9870",
+    hdfs_hdfs_url:str="hdfs://node0:9898",
+    hdfs_dir:str="/"
 ):
-    save_type = "hdfs" if use_hdfs else "file"
-    saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
-    saved_sdf_path = os.path.join(output_dir,"sdf_parquet",dump,saved_sdf_name)
-    saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
-    if not os.path.exists(saved_sdf_path):
-        os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
-    df = spark.read.parquet(f"{save_type}:///{saved_sdf_path}")
+    if use_hdfs:
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(hdfs_dir,"hdfs_result_sdf_parquet",dump,saved_sdf_name)
+        df = spark.read.parquet(f"{hdfs_hdfs_url}{saved_sdf_path}")
+    else:
+        save_type = "hdfs" if use_hdfs else "file"
+        saved_sdf_name = "_sampleRate_" + str(int(sampleRate*100 if isSample else 100)) + "_min_len_"+str(min_len)+".parquet"
+        saved_sdf_path = os.path.join(output_dir,"sdf_parquet",dump,saved_sdf_name)
+        saved_sdf_path = convert_to_absolute_path(saved_sdf_path)
+        if not os.path.exists(saved_sdf_path):
+            os.makedirs("/".join(saved_sdf_path.split("/")[:-1]), exist_ok=True)
+        df = spark.read.parquet(f"{save_type}:///{saved_sdf_path}")
     return df
 def analy_df(df):
     # 定义聚合函数求和
