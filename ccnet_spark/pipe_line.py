@@ -66,7 +66,7 @@ class Config(NamedTuple):
     percentile_head: int = 30
     percentile_tail: int = 60
     use_hdfs: bool = False
-    hdfs_url:str="http://node0:9870",
+
 
 class Pipeline:
     def __init__(self, config: Config, spark: SparkSession):
@@ -87,7 +87,6 @@ class Pipeline:
         self.percentile_tail = config.percentile_tail
         self.spark = spark
         self.use_hdfs = config.use_hdfs
-        self.hdfs_url = config.hdfs_url
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -137,8 +136,6 @@ class Pipeline:
             isSample=self.isSample,
             sampleRate=self.sampleRate,
             min_len=self.min_len,
-            use_hdfs=self.use_hdfs,
-            hdfs_url=self.hdfs_url
         )
         self.origin_df = spark_df
         self.df = spark_df
