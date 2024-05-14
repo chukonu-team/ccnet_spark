@@ -69,6 +69,7 @@ class Config(NamedTuple):
     use_hdfs: bool = False
     hdfs_http_url:str="http://node0:9870"
     hdfs_hdfs_url:str="hdfs://node0:9898"
+    repartation_count:int=0
 
 class Pipeline:
     def __init__(self, config: Config, spark: SparkSession):
@@ -92,6 +93,7 @@ class Pipeline:
         self.hdfs_dir= config.hdfs_dir
         self.hdfs_hdfs_url=config.hdfs_hdfs_url
         self.hdfs_http_url=config.hdfs_http_url
+        self.repartation_count=config.repartation_count
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -229,6 +231,11 @@ class Pipeline:
             .withColumn("score", lang_df.lang_score.score)
             .drop("lang_score")
         )
+        if(self.repartation_count>0):
+            self.df = self.df.repartition("lang").repartition(self.repartation_count)
+        
+        # self.df = self.df.repartitionByRange(6, "lang")
+
 
     def do_sentence_piece(self):
         self.df = self.df.withColumn(
