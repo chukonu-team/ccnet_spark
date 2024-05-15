@@ -95,7 +95,7 @@ if __name__ == "__main__":
     pip = getPIP(index)
     print(f"pipline is:{pip}")
     # 执行命令并将输出重定向到文件
-    subprocess.run(["bash", "/app/io_nvme.sh"], stdout=open("/app/old_nvme.log", "w"))
+    subprocess.run(["bash", "./io_snapshot.sh"], stdout=open("./old_nvme.log", "w"))
 
 
     config = Config(
@@ -129,5 +129,5 @@ if __name__ == "__main__":
     e = time.time()
     print("==============================================")
     print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
-    subprocess.run(["bash", "/app/io_nvme.sh"], stdout=open("/app/new_nvme.log", "w"))
-    subprocess.run(["bash", "/app/calculate.sh"])
+    subprocess.run(["bash", "./io_snapshot.sh"], stdout=open("./new_nvme.log", "w"))
+    subprocess.run(["bash", "./io_diff.sh"])
