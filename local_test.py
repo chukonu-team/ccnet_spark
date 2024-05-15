@@ -3,7 +3,9 @@ import time
 from pyspark.sql import SparkSession
 import sys
 import subprocess
-
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 def getPIP(index):
     pips = [
         [],
@@ -92,6 +94,7 @@ spark = (
 if __name__ == "__main__":
     # 从命令行参数中获取索引
     index = int(sys.argv[1])
+    convert2pdf_path = str(sys.argv[2])
     pip = getPIP(index)
     print(f"pipline is:{pip}")
     # 执行命令并将输出重定向到文件
@@ -126,3 +129,11 @@ if __name__ == "__main__":
     print(f"pipeline:{[i.value for i in pip]}, time consume:{round(e-s,3)}s")
     subprocess.run(["bash", "./io_snapshot.sh"], stdout=open("./new_nvme.log", "w"))
     subprocess.run(["bash", "./io_diff.sh"])
+
+    if(convert2pdf_path!=""):
+        print("start convert df to pdf")
+        df=pipeline.load_result_data()
+        pdf = df.toPandas()
+        table = pa.Table.from_pandas(pdf)
+        # 将 PyArrow 表保存为 Parquet 文件
+        pq.write_table(table, f'{convert2pdf_path}')

@@ -9,4 +9,4 @@ install_ccnet:
 	python3 setup.py sdist && \
 	pip install ./dist/ccnet_spark-$(VERSION).tar.gz
 profile_ccnet:
-	python3 local_test.py 8
+	python3 local_test.py 8 "/metadata0/wxl_data/pdf_result.parquet"

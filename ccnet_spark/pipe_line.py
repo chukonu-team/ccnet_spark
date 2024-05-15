@@ -11,7 +11,7 @@ from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation, load_partation, analy_df, save_tmp
+from .pipe_save import save_partation, load_partation,load_all, analy_df, save_tmp
 import pandas as pd
 from enum import Enum
 
@@ -293,6 +293,19 @@ class Pipeline:
             self.spark,
             lang,
             bucket,
+            self.output_dir,
+            self.dump,
+            self.isSample,
+            self.sampleRate,
+            self.min_len,
+            use_hdfs=self.use_hdfs,
+            hdfs_hdfs_url=self.hdfs_hdfs_url,
+            hdfs_http_url=self.hdfs_http_url,
+            hdfs_dir=self.hdfs_dir
+        )
+    def load_result_data(self):
+        return load_all(
+            self.spark,
             self.output_dir,
             self.dump,
             self.isSample,

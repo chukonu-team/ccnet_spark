@@ -58,5 +58,12 @@ local模式使用docker容器测试：
     - `make run_ccnet`
     - `make use_ccnet`
 进入容器后执行(可能需要安装一些依赖):
+
+进入容器后执行(可能需要安装一些依赖):
+    这里profile_ccnet指定参数8是指全流程，里面第二个参数是输出padas parquet路径，设为""则不输出，这用于padas 后续数据分析
     - `make install_ccnet`
     - `make profile_ccnet`
+
+### pandas 数据分析
+
+参考jupyter notebook："local_analy.ipynb"
