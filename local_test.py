@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     config = Config(
         isSample=False,
-        n_segments=10,
+        n_segments=1,
         sampleRate=0.01,
         cache_dir="/metadata0/wxl_data/cached_data/",
         hdfs_dir="/data0/k8s/node0_data/ccnet_spark/cached_data/",
@@ -111,20 +111,15 @@ if __name__ == "__main__":
         dump="2019-18",
         pipeline=pip,
         use_hdfs=True,
-        repartition_count=0,
+        repartation_count=0,
     )
 
     pipeline = Pipeline(config, spark)
     s = time.time()
     df = pipeline.load_data()
     pipeline.run_pipeline()
-    # random_row = pipeline.df.sample(fraction=0.00001, seed=42)
-    # res=random_row.collect()
-    # random_row = pipeline.df.orderBy(rand()).limit(1)
-    # random_row = pipeline.df.rdd.takeSample(False, 1, seed=42)
     # pipeline.timer()
     # pipeline.save_to_tmp()
-    # res=pipeline.df.select("url").rdd.count()
     pipeline.save_data()
     e = time.time()
     print("==============================================")

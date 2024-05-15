@@ -7,3 +7,4 @@ cachetools==5.3.3
 numpy==1.26.4
 pyspark==3.5.1
 requests==2.31.0
+hdfs==2.7.3
