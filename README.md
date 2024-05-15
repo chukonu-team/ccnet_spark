@@ -58,5 +58,5 @@ local模式使用docker容器测试：
     - `make run_ccnet`
     - `make use_ccnet`
 进入容器后执行(可能需要安装一些依赖):
-    - `install_ccnet`
+    - `make install_ccnet`
     - `make profile_ccnet`
