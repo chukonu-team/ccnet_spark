@@ -51,4 +51,11 @@ ccnet_spark 是一个python package，使用pyspark实现CommonCrawl数据清洗
 
 ### 使用
 
-具体使用参见`tests`以及[dev.md](./dev.md)
+#### local 模式
+
+local模式使用docker容器测试：
+    - `make build_base_ccnet`
+    - `make run_ccnet`
+    - `make use_ccnet`
+进入容器后执行(可能需要安装一些依赖):
+    - `make profile_ccnet`
