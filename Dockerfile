@@ -13,9 +13,9 @@ RUN apt-get update && \
     apt-get install -y unzip && \
     apt-get install -y htop && \
     apt-get install -y git && \
-    apt-get install default-jdk && \
-    apt-get install bc && \
-    apt-get install tmux
+    apt-get install -y default-jdk && \
+    apt-get install -y bc && \
+    apt-get install -y tmux
 # 安装Python 3和pip
 RUN apt update && \
     apt install -y python3 python3-pip
