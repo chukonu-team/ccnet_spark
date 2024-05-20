@@ -78,12 +78,12 @@ def getPIP(index):
     return pips[index]
 
 spark = (
-    SparkSession.builder.appName("ccnetspark_local_profile")
+    SparkSession.builder.appName("ccnetspark_local_profile_n")
     .master("local[*]")
-    .config("spark.executor.memory", "10g")
-    .config("spark.driver.memory", "10g")
+    .config("spark.executor.memory", "20g")
+    .config("spark.driver.memory", "20g")
     .config("spark.dynamicAllocation.enabled", "false")
-    .config("spark.driver.maxResultSize", "5g")
+    .config("spark.driver.maxResultSize", "15g")
     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
     # .config("spark.sql.autoBroadcastJoinThreshold","-1")
     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     config = Config(
         isSample=False,
-        n_segments=1,
+        n_segments=10,
         sampleRate=0.01,
         cache_dir="/metadata0/wxl_data/cached_data/",
         hdfs_dir="/data0/k8s/node0_data/ccnet_spark/cached_data/",

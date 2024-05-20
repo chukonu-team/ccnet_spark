@@ -11,7 +11,7 @@ from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation, load_partation,load_all, analy_df, save_tmp
+from .pipe_save import save_partation, load_partation, analy_df, save_tmp
 import pandas as pd
 from enum import Enum
 
@@ -69,7 +69,7 @@ class Config(NamedTuple):
     use_hdfs: bool = False
     hdfs_http_url:str="http://node0:9870"
     hdfs_hdfs_url:str="hdfs://node0:9898"
-    repartation_count:int=0
+    repartition_count:int=0
 
 class Pipeline:
     def __init__(self, config: Config, spark: SparkSession):
@@ -93,7 +93,7 @@ class Pipeline:
         self.hdfs_dir= config.hdfs_dir
         self.hdfs_hdfs_url=config.hdfs_hdfs_url
         self.hdfs_http_url=config.hdfs_http_url
-        self.repartation_count=config.repartation_count
+        self.repartition_count=config.repartition_count
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -231,8 +231,8 @@ class Pipeline:
             .withColumn("score", lang_df.lang_score.score)
             .drop("lang_score")
         )
-        if(self.repartation_count>0):
-            self.df = self.df.repartition("lang").repartition(self.repartation_count)
+        if(self.repartition_count>0):
+            self.df = self.df.repartition("lang").repartition(self.repartition_count)
         
         # self.df = self.df.repartitionByRange(6, "lang")
 
@@ -293,19 +293,6 @@ class Pipeline:
             self.spark,
             lang,
             bucket,
-            self.output_dir,
-            self.dump,
-            self.isSample,
-            self.sampleRate,
-            self.min_len,
-            use_hdfs=self.use_hdfs,
-            hdfs_hdfs_url=self.hdfs_hdfs_url,
-            hdfs_http_url=self.hdfs_http_url,
-            hdfs_dir=self.hdfs_dir
-        )
-    def load_result_data(self):
-        return load_all(
-            self.spark,
             self.output_dir,
             self.dump,
             self.isSample,
