@@ -11,7 +11,8 @@ from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
-from .pipe_save import save_partation, load_partation, analy_df, save_tmp
+from .pipe_save import save_partation, load_partation,load_all, analy_df, save_tmp
+from .load_data import download_and_parse
 import pandas as pd
 from enum import Enum
 
@@ -19,7 +20,7 @@ class PipelineStep(Enum):
     REAL_LEN = "real_len"
     HASH = "hash"
     DEDUP_KEEP = "dedup_keep"
-    DEDUP_NOKEEP = "dedup_nokeep"
+    DEDUP_NOKEEP = "dedup_nokeep",
     LID = "lid"
     SP = "sp"
     LM = "lm"
@@ -55,6 +56,7 @@ class Config(NamedTuple):
     cache_dir: str = "../cache_data/"
     output_dir: str = "../cache_data/"
     hdfs_dir:str = "/data0/k8s/node0_data/ccnet_spark/cached_data/"
+    root_dir:str = "https://data.commoncrawl.org"
     min_len: int = 300
     isSample: bool = False
     sampleRate: float = 0.01
@@ -69,7 +71,8 @@ class Config(NamedTuple):
     use_hdfs: bool = False
     hdfs_http_url:str="http://node0:9870"
     hdfs_hdfs_url:str="hdfs://node0:9898"
-    repartition_count:int=0
+    repartation_count:int=0
+    repartation_lang_count:int=0
 
 class Pipeline:
     def __init__(self, config: Config, spark: SparkSession):
@@ -93,7 +96,10 @@ class Pipeline:
         self.hdfs_dir= config.hdfs_dir
         self.hdfs_hdfs_url=config.hdfs_hdfs_url
         self.hdfs_http_url=config.hdfs_http_url
-        self.repartition_count=config.repartition_count
+        self.repartation_count=config.repartation_count
+        self.repartation_lang_count=config.repartation_lang_count
+
+        self.root_dir=config.root_dir
         #### computed by config:
         self.segments = [i for i in range(self.n_segments)]
         cutoffs = pd.read_csv(self.cutoff_csv_path, index_col=0)
@@ -135,22 +141,20 @@ class Pipeline:
         else:
             print("unknown pipeline")
     def load_data(self):
-        spark_df = load_segments(
-            self.spark,
-            self.segments,
-            self.cache_dir,
-            dump=self.dump,
-            isSample=self.isSample,
-            sampleRate=self.sampleRate,
-            min_len=self.min_len,
-            use_hdfs=self.use_hdfs,
-            hdfs_hdfs_url=self.hdfs_hdfs_url,
-            hdfs_http_url=self.hdfs_http_url,
-            hdfs_dir=self.hdfs_dir
-        )
-        self.origin_df = spark_df
-        self.df = spark_df
-        return spark_df
+
+        # ERROR TODO: self 不能broadcast
+        # res = self.spark.sparkContext.parallelize(self.segments).flatMap(lambda segment: download_and_parse(segment,segment, self.dump, self.cache_dir, self.root_dir))
+        # spark_df = self.spark.createDataFrame(res)
+
+        segments = self.segments
+        dump =  self.dump
+        cache_dir = self.cache_dir
+        root_dir = self.root_dir
+        res = self.spark.sparkContext.parallelize(segments).flatMap(lambda segment: download_and_parse(segment,segment, dump, cache_dir, root_dir))
+        self.df  = self.spark.createDataFrame(res)
+        if(self.repartation_lang_count>0):
+            self.df = self.df.repartition(self.repartation_lang_count)
+        return self.df
 
     def run_step(self, pipeline: PipelineStep):
         if not isinstance(pipeline, PipelineStep):
@@ -231,8 +235,8 @@ class Pipeline:
             .withColumn("score", lang_df.lang_score.score)
             .drop("lang_score")
         )
-        if(self.repartition_count>0):
-            self.df = self.df.repartition("lang").repartition(self.repartition_count)
+        if(self.repartation_count>0):
+            self.df = self.df.repartition("lang").repartition(self.repartation_count)
         
         # self.df = self.df.repartitionByRange(6, "lang")
 
@@ -293,6 +297,19 @@ class Pipeline:
             self.spark,
             lang,
             bucket,
+            self.output_dir,
+            self.dump,
+            self.isSample,
+            self.sampleRate,
+            self.min_len,
+            use_hdfs=self.use_hdfs,
+            hdfs_hdfs_url=self.hdfs_hdfs_url,
+            hdfs_http_url=self.hdfs_http_url,
+            hdfs_dir=self.hdfs_dir
+        )
+    def load_result_data(self):
+        return load_all(
+            self.spark,
             self.output_dir,
             self.dump,
             self.isSample,

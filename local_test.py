@@ -80,10 +80,10 @@ def getPIP(index):
 spark = (
     SparkSession.builder.appName("ccnetspark_local_profile_n")
     .master("local[*]")
-    .config("spark.executor.memory", "20g")
-    .config("spark.driver.memory", "20g")
+    .config("spark.executor.memory", "10g")
+    .config("spark.driver.memory", "10g")
     .config("spark.dynamicAllocation.enabled", "false")
-    .config("spark.driver.maxResultSize", "15g")
+    .config("spark.driver.maxResultSize", "5g")
     .config("spark.sql.execution.arrow.pyspark.enabled", "true")
     # .config("spark.sql.autoBroadcastJoinThreshold","-1")
     # .config("spark.executor.extraJavaOptions", "-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps")
@@ -114,7 +114,8 @@ if __name__ == "__main__":
         dump="2019-18",
         pipeline=pip,
         use_hdfs=True,
-        repartation_count=0,
+        repartation_count=10,
+        repartation_lang_count=0,
     )
 
     pipeline = Pipeline(config, spark)

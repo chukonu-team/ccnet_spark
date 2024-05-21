@@ -13,6 +13,7 @@ from functools import partial
 from .util import convert_to_absolute_path
 import re
 from hdfs import InsecureClient
+import shutil
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(process)d:%(name)s - %(message)s",
@@ -21,7 +22,6 @@ logging.basicConfig(
 ROOT_DIR = "https://data.commoncrawl.org"
 FileDescriptor = Union[Path, List[Path], str]
 ReadableFileLike = Union[Iterable[str], FileDescriptor, None]
-
 
 def get_paths_path(dump:str,cache_dir:str):
     download_dir = os.path.join(cache_dir, 'commoncrawl_data', dump)
@@ -346,8 +346,18 @@ def load_segments(
     #     pool.map(partial_load_segment2pdf, segments)
     # ### 2. 预处理到sdf
 
+    if use_hdfs:
+        cache_sdf_path = os.path.join(hdfs_dir,"hdfs_sdf_parquet",dump)
+        hdfs_client = InsecureClient(hdfs_http_url)
+        if(check_hdfs_path_exists(hdfs_client,cache_sdf_path)):
+            hdfs_client.delete(cache_sdf_path, recursive=True)
+    else:
+        # cache_dir_path 是要删除的目录路径
+        cache_sdf_path = os.path.join(cache_dir,"sdf_parquet",dump)
+        cache_sdf_path = convert_to_absolute_path(cache_sdf_path) # //convert path
+        if os.path.exists(cache_sdf_path):
+            shutil.rmtree(cache_sdf_path)
 
-    merged_sdf = None
     for seg in segments:
         sdf = load_segment2sdf(
             spark,
@@ -362,8 +372,13 @@ def load_segments(
             hdfs_hdfs_url=hdfs_hdfs_url,
             hdfs_dir=hdfs_dir
         )
-        if merged_sdf:
-            merged_sdf = merged_sdf.unionAll(sdf)  # Merge DataFrames
-        else:
-            merged_sdf = sdf
-    return merged_sdf
+    if use_hdfs:
+        cache_sdf_path = os.path.join(hdfs_dir,"hdfs_sdf_parquet",dump)
+        spark_df = spark.read.parquet(f"{hdfs_hdfs_url}{cache_sdf_path}/*.parquet")
+        print("use spark_df doc count:",spark_df.count())
+        return spark_df
+    else:
+        cache_sdf_path = os.path.join(cache_dir,"sdf_parquet",dump)
+        cache_sdf_path = convert_to_absolute_path(cache_sdf_path) # //convert path
+        spark_df = spark.read.parquet(f"file:///{cache_sdf_path}/*.parquet")
+        return spark_df
