@@ -1,12 +1,11 @@
 from pyspark.sql.functions import udf
-from pyspark.sql.types import StringType, FloatType
+from pyspark.sql.types import StringType, FloatType,IntegerType
 from cachetools import cached  ### model 缓存
 from pyspark.sql.types import (
     StructType,
     StructField,
 )
 import fasttext  # type: ignore
-
 @cached(cache={})
 def getFastTextModel(fasttext_model_path):
     fasttext_model = fasttext.load_model(fasttext_model_path)
@@ -38,3 +37,12 @@ def predictLang(text,fasttext_model_path,threshold):
     if score < threshold:
         return None, None
     return lang, float(score)
+
+# 定义一个函数，用于按照语言分区
+@udf(returnType=IntegerType())
+# 自定义分区函数
+def custom_partitioner(lang,en_partitions,other_partitions):
+    if lang == "en":
+        return hash(lang) % en_partitions
+    else:
+        return en_partitions + (hash(lang) % other_partitions)

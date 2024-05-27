@@ -4,8 +4,7 @@ from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode
 from pyspark.sql.functions import col
-
-from .pipe_lid import predictLang
+from .pipe_lid import predictLang,custom_partitioner
 from .pipe_preprocess import load_segments
 from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
@@ -152,8 +151,8 @@ class Pipeline:
         root_dir = self.root_dir
         res = self.spark.sparkContext.parallelize(segments).flatMap(lambda segment: download_and_parse(segment,segment, dump, cache_dir, root_dir))
         self.df  = self.spark.createDataFrame(res)
-        if(self.repartation_lang_count>0):
-            self.df = self.df.repartition(self.repartation_lang_count)
+        if(self.repartation_count>0):
+            self.df = self.df.repartition(self.repartation_count)
         return self.df
 
     def run_step(self, pipeline: PipelineStep):
@@ -235,10 +234,26 @@ class Pipeline:
             .withColumn("score", lang_df.lang_score.score)
             .drop("lang_score")
         )
-        if(self.repartation_count>0):
-            self.df = self.df.repartition("lang").repartition(self.repartation_count)
-        
-        # self.df = self.df.repartitionByRange(6, "lang")
+        if(self.repartation_lang_count>0):
+            if self.repartation_lang_count<10:
+                self.df = self.df.repartition(self.repartation_lang_count)
+            else:
+                en_count=int(0.4*self.repartation_lang_count)
+                partitioned_df = self.df.withColumn(
+                    "partition_id",
+                    custom_partitioner(
+                        "lang",
+                        F.lit(en_count),
+                        F.lit(self.repartation_lang_count-en_count),
+                    ),
+                )
+
+                # 按分区列重新分区
+                partitioned_df = partitioned_df.repartition(self.repartation_lang_count, col("partition_id"))
+
+                # 删除辅助列
+                self.df = partitioned_df.drop("partition_id")
+                # self.df = self.df.repartition("lang").repartition(self.repartation_lang_count)
 
 
     def do_sentence_piece(self):
