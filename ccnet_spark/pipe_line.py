@@ -4,6 +4,7 @@ from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode
 from pyspark.sql.functions import col
+from pyspark.sql.functions import count
 from .pipe_lid import predictLang,custom_partitioner
 from .pipe_preprocess import load_segments
 from .pipe_hash import compute_hashes, split_doc2para
@@ -14,6 +15,15 @@ from .pipe_save import save_partation, load_partation,load_all, analy_df, save_t
 from .load_data import download_and_parse
 import pandas as pd
 from enum import Enum
+# 自定义分区函数
+class LangPartitioner:
+    def __init__(self, num_partitions):
+        self.num_partitions = num_partitions
+
+    def __call__(self, key):
+        # print("key",key)
+        return key
+        # return hash(key) % self.num_partitions
 
 class PipelineStep(Enum):
     REAL_LEN = "real_len"
@@ -234,26 +244,66 @@ class Pipeline:
             .withColumn("score", lang_df.lang_score.score)
             .drop("lang_score")
         )
-        if(self.repartation_lang_count>0):
-            if self.repartation_lang_count<10:
+        if(self.repartation_lang_count>0 or self.repartation_lang_count<0):
+            if self.repartation_lang_count>0:
                 self.df = self.df.repartition(self.repartation_lang_count)
+                partition_sizes = self.df.rdd.glom().map(len).collect()
+                print("================= random Each partition size:", partition_sizes)
             else:
-                en_count=int(0.4*self.repartation_lang_count)
+                self.repartation_lang_count = -self.repartation_lang_count
+                # 计算每种语言的数量
+                lang_counts = self.df.groupBy("lang").agg(F.count('*').alias("count")).collect()
+                # 计算每种语言的分区数
+                lang_partitions = {}
+                total_count = self.df.count()
+                partition_offset = 0
+                less_lang=[]
+                cum_count=0
+                for row in lang_counts:
+                    lang = row["lang"]
+                    count = row["count"]
+                    lang_partitions[lang] = (partition_offset, max(1, int(count / total_count * self.repartation_lang_count)))
+                    if(lang_partitions[lang][1]>1):
+                        partition_offset += lang_partitions[lang][1]
+                    else:
+                        less_lang.append(lang)
+                        cum_count+=count
+                for lang in less_lang:
+                    lang_partitions[lang]=(partition_offset, max(1, int(cum_count / total_count * self.repartation_lang_count)))
+                # 确保分区总数与期望的分区数一致
+                # 分配调整部分给最多的语言
+                # adjusted_partitions = self.repartation_lang_count - sum([partitions for _, partitions in lang_partitions.values()])
+                # if adjusted_partitions > 0:
+                #     lang_partitions["en"] = (lang_partitions["en"][0], lang_partitions["en"][1] + adjusted_partitions)
+                # print(f"======mydebug: lang partitions count:{lang_partitions},{adjusted_partitions}")
+                # en_count=int(0.4*self.repartation_lang_count)
                 partitioned_df = self.df.withColumn(
                     "partition_id",
                     custom_partitioner(
                         "lang",
-                        F.lit(en_count),
-                        F.lit(self.repartation_lang_count-en_count),
+                        F.lit(str(lang_partitions)),
                     ),
                 )
-
+                # pcounts = partitioned_df.groupBy("partition_id").agg(F.count('*').alias("pcount")).orderBy("partition_id")
+                # print(pcounts.collect(),pcounts.first())
                 # 按分区列重新分区
-                partitioned_df = partitioned_df.repartition(self.repartation_lang_count, col("partition_id"))
+                distinct_count = partitioned_df.select("partition_id").distinct().count()
+                # print("distinct_count:",distinct_count)
 
+
+                # 转换为 RDD 并使用 partitionBy
+                rdd = partitioned_df.rdd.map(lambda row: (row['partition_id'], row))
+                partitioned_rdd = rdd.partitionBy(distinct_count, LangPartitioner(distinct_count))
+                partitioned_df = partitioned_rdd.map(lambda x: x[1]).toDF()
+
+                # partitioned_df = partitioned_df.repartition(distinct_count,"partition_id")#rdd-->partby,
+                partition_sizes = partitioned_df.rdd.glom().map(len).collect()
+                print("================= lang Each partition size:", partition_sizes)
+                # print(partitioned_df.select("lang","partition_id").show())
                 # 删除辅助列
                 self.df = partitioned_df.drop("partition_id")
                 # self.df = self.df.repartition("lang").repartition(self.repartation_lang_count)
+                # 检查分区
 
 
     def do_sentence_piece(self):

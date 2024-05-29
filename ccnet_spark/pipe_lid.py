@@ -1,5 +1,6 @@
 from pyspark.sql.functions import udf
 from pyspark.sql.types import StringType, FloatType,IntegerType
+import random
 from cachetools import cached  ### model 缓存
 from pyspark.sql.types import (
     StructType,
@@ -41,8 +42,10 @@ def predictLang(text,fasttext_model_path,threshold):
 # 定义一个函数，用于按照语言分区
 @udf(returnType=IntegerType())
 # 自定义分区函数
-def custom_partitioner(lang,en_partitions,other_partitions):
-    if lang == "en":
-        return hash(lang) % en_partitions
-    else:
-        return en_partitions + (hash(lang) % other_partitions)
+def custom_partitioner(lang,lang_partitions_str):
+    lang_partitions = eval(lang_partitions_str)  # 将字符串转换为字典
+    start, partitions = lang_partitions.get(lang, (0, 1))
+    # if (partitions<=1):
+    #     return 0
+    partition_id = start +  random.randint(0, partitions - 1)
+    return partition_id
