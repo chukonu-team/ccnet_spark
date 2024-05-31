@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     config = Config(
         isSample=False,
-        n_segments=10,
+        n_segments=1,
         sampleRate=0.01,
         cache_dir="/metadata0/wxl_data/cached_data/",
         hdfs_dir="/data0/k8s/node0_data/ccnet_spark/cached_data/",
@@ -114,8 +114,8 @@ if __name__ == "__main__":
         dump="2019-18",
         pipeline=pip,
         use_hdfs=True,
-        repartation_count=10,
-        repartation_lang_count=0,
+        repartation_count=32,
+        repartation_lang_count=32,
     )
 
     pipeline = Pipeline(config, spark)

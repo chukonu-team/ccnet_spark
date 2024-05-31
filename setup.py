@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name = "ccnet_spark",
-    version = "0.1.4",
+    version = "0.1.9",
     author = "SeeLey Wang",
     author_email = "zizdlp@gmail.com",
     description = ("A spark version cc_net for CommonCrawl data clean"),
