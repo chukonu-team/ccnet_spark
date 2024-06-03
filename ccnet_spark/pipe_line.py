@@ -6,13 +6,12 @@ from pyspark.sql.functions import explode
 from pyspark.sql.functions import col
 from pyspark.sql.functions import count
 from .pipe_lid import predictLang,custom_partitioner
-from .pipe_preprocess import load_segments
 from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
 from .pipe_save import save_partation, load_partation,load_all, analy_df, save_tmp
-from .load_data import download_and_parse
+from .pipe_load import download_and_parse
 import pandas as pd
 from enum import Enum
 # 自定义分区函数
@@ -63,7 +62,6 @@ class Config(NamedTuple):
 
     dump: str = "2019-09"
     cache_dir: str = "../cache_data/"
-    output_dir: str = "../cache_data/"
     hdfs_dir:str = "/data0/k8s/node0_data/ccnet_spark/cached_data/"
     root_dir:str = "https://data.commoncrawl.org"
     min_len: int = 300
@@ -88,7 +86,6 @@ class Pipeline:
         #### loaded from config
         self.dump = config.dump
         self.cache_dir = config.cache_dir
-        self.output_dir = config.output_dir
         self.min_len = config.min_len
         self.isSample = config.isSample
         self.sampleRate = config.sampleRate
@@ -272,29 +269,29 @@ class Pipeline:
     def save_to_tmp(self):
         save_tmp(
             self.df,
-            self.output_dir,
+            self.cache_dir,
+            self.hdfs_dir,
             self.dump,
             self.isSample,
             self.sampleRate,
             self.min_len,
             use_hdfs=self.use_hdfs,
             hdfs_hdfs_url=self.hdfs_hdfs_url,
-            hdfs_http_url=self.hdfs_http_url,
-            hdfs_dir=self.hdfs_dir
+            hdfs_http_url=self.hdfs_http_url
         )
 
     def save_data(self):
         save_partation(
             self.df,
-            self.output_dir,
+            self.cache_dir,
+            self.hdfs_dir,
             self.dump,
             self.isSample,
             self.sampleRate,
             self.min_len,
             use_hdfs=self.use_hdfs,
             hdfs_hdfs_url=self.hdfs_hdfs_url,
-            hdfs_http_url=self.hdfs_http_url,
-            hdfs_dir=self.hdfs_dir
+            hdfs_http_url=self.hdfs_http_url
         )
 
     def load_partation_data(self, lang, bucket):
@@ -302,28 +299,28 @@ class Pipeline:
             self.spark,
             lang,
             bucket,
-            self.output_dir,
+            self.cache_dir,
+            self.hdfs_dir,
             self.dump,
             self.isSample,
             self.sampleRate,
             self.min_len,
             use_hdfs=self.use_hdfs,
             hdfs_hdfs_url=self.hdfs_hdfs_url,
-            hdfs_http_url=self.hdfs_http_url,
-            hdfs_dir=self.hdfs_dir
+            hdfs_http_url=self.hdfs_http_url
         )
     def load_result_data(self):
         return load_all(
             self.spark,
-            self.output_dir,
+            self.cache_dir,
+            self.hdfs_dir,
             self.dump,
             self.isSample,
             self.sampleRate,
             self.min_len,
             use_hdfs=self.use_hdfs,
             hdfs_hdfs_url=self.hdfs_hdfs_url,
-            hdfs_http_url=self.hdfs_http_url,
-            hdfs_dir=self.hdfs_dir
+            hdfs_http_url=self.hdfs_http_url
         )
 
     def analy(self):

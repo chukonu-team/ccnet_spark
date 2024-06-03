@@ -6,36 +6,14 @@ ccnet_spark 是一个python package，使用pyspark实现CommonCrawl数据清洗
 
 ## 安装 & 卸载
 
-### 依赖
-
-与cc_net 相似，ccnet_spark 的一些环节依赖fasttext、kenlm、sentencepiece等
-
-- 安装`requirements.txt`若干依赖：`pip install -r requirements.txt`
-- 手动安装kenlm:
-
-    ```shell
-    git clone https://github.com/kpu/kenlm.git
-    cd kenlm
-    pip install .
-    ```
-
-### 安装
-
-源码安装:
-
-```shell
-    python setup.py sdist
-    cd dist
-    pip install ccnet-*
-```
-
-## 卸载
-
-卸载:`pip uninstall ccnet_spark`
+- 参见 Dockerfile
 
 ### 数据
 
-需要提前下载好fastext、kenlm、sentencepiece 等模型
+需要提前下载好kenlm、sentencepiece 等模型,默认下载到`.catched_data/`:
+
+- `make cached_data/lid.bin`
+- `make dl_all_lms`
 
 ### 支持的pipeline
 
@@ -60,10 +38,11 @@ local模式使用docker容器测试：
 - `make use_ccnet`
 
 进入容器后执行(可能需要安装一些依赖):
-这里profile_ccnet指定参数8是指全流程，里面第二个参数是输出padas parquet路径，设为""则不输出，这用于padas 后续数据分析
+这里`test_pipeline`指定参数8是指全流程，里面第二个参数是输出padas parquet路径，设为""则不输出，这用于padas 后续数据分析
 
-- `make install_ccnet`
-- `make profile_ccnet`
+- 可能需要安装最新的ccnet_spark:`make install_ccnet`
+- 测试数据下载预处理环节：`make test_load`
+- 测试全流程：`make test_pipeline`
 
 ### pandas 数据分析
 
