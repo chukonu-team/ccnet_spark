@@ -106,7 +106,7 @@ if __name__ == "__main__":
         n_segments=1,
         sampleRate=0.01,
         cache_dir="./cached_data/",
-        fasttext_model_path=".cached_data/lid.bin",
+        fasttext_model_path="./cached_data/lid.bin",
         lm_dir="./cached_data/lm_sp",
         cutoff_csv_path="./cutoff.csv",
         dump="2019-18",
