@@ -8,7 +8,7 @@ if __name__ == "__main__":
     parser.add_argument("--dump", required=True, help="The dump name to download, e.g., 2019-18")
     parser.add_argument("--cache_dir", required=True, help="The cache directory to store downloaded data")
     parser.add_argument("--root_dir", default="https://data.commoncrawl.org", help="The root directory URL of the data source")
-    parser.add_argument("--segments", nargs='+', type=int, default=[i for i in range(10)], help="List of segments to download")
+    parser.add_argument("--segments", nargs='+', type=int, default=[i for i in range(5)], help="List of segments to download")
 
     args = parser.parse_args()
 
@@ -22,8 +22,8 @@ if __name__ == "__main__":
     # 创建 SparkSession
     spark = SparkSession.builder \
         .appName("Parallel File Download") \
-        .config("spark.driver.memory", "50g") \
-        .config("spark.driver.maxResultSize", "50g") \
+        .config("spark.driver.memory", "10g") \
+        .config("spark.driver.maxResultSize", "10g") \
         .getOrCreate()
 
     res = spark.sparkContext.parallelize(segments).flatMap(lambda segment: download_and_parse(segment, segments.index(segment), dump, cache_dir, root_dir))
