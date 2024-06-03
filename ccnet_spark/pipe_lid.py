@@ -45,7 +45,5 @@ def predictLang(text,fasttext_model_path,threshold):
 def custom_partitioner(lang,lang_partitions_str):
     lang_partitions = eval(lang_partitions_str)  # 将字符串转换为字典
     start, partitions = lang_partitions.get(lang, (0, 1))
-    # if (partitions<=1):
-    #     return 0
     partition_id = start +  random.randint(0, partitions - 1)
     return partition_id
