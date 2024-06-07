@@ -26,6 +26,19 @@ def split_doc2para(content):
     line_ids = range(0, len(lines))  # 生成行号
     return list(zip(line_ids, lines))
 
+
+@udf(returnType=StringType())
+def normalize_line(line):
+    if not line:
+        return None
+    normalized_line = normalize_for_dedup(
+        line
+    )  # Assuming normalize_for_dedup is defined
+    return normalized_line
+
+
+
+
 @udf(returnType=BinaryType())
 def compute_hashes(line):
     if not line:
@@ -35,5 +48,5 @@ def compute_hashes(line):
     )  # Assuming normalize_for_dedup is defined
     line_hash = hashlib.sha1(bytes(normalized_line, encoding="utf-8")).digest()[
         :HASH_SIZE
-    ]
+    ]#8byte=8*8=64bit
     return line_hash

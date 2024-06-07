@@ -13,9 +13,10 @@ from pyspark.sql.types import ArrayType, StructType, StructField, IntegerType, S
 from pyspark.sql.functions import split, row_number
 from pyspark.sql.window import Window
 from pyspark.sql.functions import collect_list, col, concat_ws, struct, array_sort, expr
-
+from pyspark.sql.functions import sha2, col
 from .pipe_lid import predictLang,custom_partitioner
-from .pipe_hash import compute_hashes, split_doc2para
+from pyspark.sql.functions import sha2, expr, substring
+from .pipe_hash import compute_hashes, split_doc2para,normalize_line
 from .pipe_tokenized import doSentencePiece
 from .pipe_perplexity import doDocLM
 from .pipe_ppbucket import doPPBucket
@@ -198,8 +199,12 @@ class Pipeline:
     def compute_hashes(self):
 
         df_split = self.df.select("*", posexplode(split("raw_content", "\n")).alias("raw_line_id", "raw_line")).drop("raw_content")
-        self.df = df_split.withColumn("hash_value", compute_hashes("raw_line"))
-        
+        # self.df = df_split.withColumn("hash_value", compute_hashes("raw_line"))
+
+        df_split = df_split.withColumn("normalize_line", normalize_line("raw_line"))
+        self.df = df_split.withColumn("hash_value", sha2(col("normalize_line"), 256))
+        self.df = self.df.withColumn("hash_value", substring(self.df["hash_value"], 1, 16))#16*4=64bit
+
         # split_result = self.df.withColumn(
         #     "split_content", split_doc2para(self.df["raw_content"])
         # )
@@ -221,6 +226,7 @@ class Pipeline:
         self.group_and_concat()
 
     def group_and_concat(self):
+        # print("=========count:",self.df.count())
         group_df = self.df.groupBy("digest").agg(
             F.first("url").alias("url"),
             F.first("date_download").alias("date_download"),
