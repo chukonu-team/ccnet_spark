@@ -5,6 +5,15 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode
 from pyspark.sql.functions import col
 from pyspark.sql.functions import count
+from pyspark.sql.functions import posexplode, split
+from pyspark.sql.functions import col, expr, when
+from pyspark.sql.functions import col, split, explode, monotonically_increasing_id
+from pyspark.sql.functions import col, split, explode, row_number, sha2
+from pyspark.sql.types import ArrayType, StructType, StructField, IntegerType, StringType
+from pyspark.sql.functions import split, row_number
+from pyspark.sql.window import Window
+from pyspark.sql.functions import collect_list, col, concat_ws, struct, array_sort, expr
+
 from .pipe_lid import predictLang,custom_partitioner
 from .pipe_hash import compute_hashes, split_doc2para
 from .pipe_tokenized import doSentencePiece
@@ -80,6 +89,7 @@ class Config(NamedTuple):
     hdfs_hdfs_url:str="hdfs://node0:9898"
     repartation_count:int=0
     repartation_lang_count:int=0
+    selected_langs: list = []
 
 class Pipeline:
     def __init__(self, config: Config, spark: SparkSession):
@@ -104,6 +114,7 @@ class Pipeline:
         self.hdfs_http_url=config.hdfs_http_url
         self.repartation_count=config.repartation_count
         self.repartation_lang_count=config.repartation_lang_count
+        self.selected_langs=config.selected_langs
 
         self.root_dir=config.root_dir
         #### computed by config:
@@ -185,15 +196,19 @@ class Pipeline:
             self.drop_columns()
 
     def compute_hashes(self):
-        split_result = self.df.withColumn(
-            "split_content", split_doc2para(self.df["raw_content"])
-        )
-        exploded_df = split_result.withColumn(
-            "exploded_content", explode(split_result.split_content)
-        ).drop("split_content")
-        self.df = exploded_df.withColumn(
-            "hash_value", compute_hashes(exploded_df.exploded_content.raw_line)
-        )
+
+        df_split = self.df.select("*", posexplode(split("raw_content", "\n")).alias("raw_line_id", "raw_line")).drop("raw_content")
+        self.df = df_split.withColumn("hash_value", compute_hashes("raw_line"))
+        
+        # split_result = self.df.withColumn(
+        #     "split_content", split_doc2para(self.df["raw_content"])
+        # )
+        # exploded_df = split_result.withColumn(
+        #     "exploded_content", explode(split_result.split_content)
+        # ).drop("split_content")
+        # self.df = exploded_df.withColumn(
+        #     "hash_value", compute_hashes(exploded_df.exploded_content.raw_line)
+        # )
 
     def deduplicate(self, pipeline: PipelineStep):
         if pipeline == PipelineStep.DEDUP_KEEP:
@@ -214,8 +229,8 @@ class Pipeline:
             F.first("length").alias("original_length"),
             F.first("nlines").alias("original_nlines"),
             F.first("title").alias("title"),
-            F.count("exploded_content.raw_line_id").alias("nlines"),
-            F.sort_array(F.collect_list("exploded_content")).alias("exploded_content"),
+            F.count("raw_line_id").alias("nlines"),
+            F.sort_array(F.collect_list(struct('raw_line_id', 'raw_line'))).alias("exploded_content")
         )
         group_df = group_df.withColumn(
             "raw_content", F.concat_ws("\n", "exploded_content.raw_line")
@@ -226,7 +241,28 @@ class Pipeline:
         self.df = group_df.withColumn("length", F.length("raw_content")).drop(
             "exploded_content"
         )
+        # self.df.show()
 
+        # group_df = self.df.groupBy("digest").agg(
+        #     F.first("url").alias("url"),
+        #     F.first("date_download").alias("date_download"),
+        #     F.first("source_domain").alias("source_domain"),
+        #     F.first("cc_segment").alias("cc_segment"),
+        #     F.first("length").alias("original_length"),
+        #     F.first("nlines").alias("original_nlines"),
+        #     F.first("title").alias("title"),
+        #     F.count("exploded_content.raw_line_id").alias("nlines"),
+        #     F.sort_array(F.collect_list("exploded_content")).alias("exploded_content"),
+        # )
+        # group_df = group_df.withColumn(
+        #     "raw_content", F.concat_ws("\n", "exploded_content.raw_line")
+        # )
+        # group_df = group_df.withColumn(
+        #     "raw_line_id", group_df.exploded_content.raw_line_id
+        # )
+        # self.df = group_df.withColumn("length", F.length("raw_content")).drop(
+        #     "exploded_content"
+        # )
     def predict_lang(self):
         lang_df = self.df.withColumn(
             "lang_score",
@@ -241,6 +277,9 @@ class Pipeline:
             .withColumn("score", lang_df.lang_score.score)
             .drop("lang_score")
         )
+        print(f"====================select langs:{self.selected_langs}===================")
+        if(self.selected_langs!=[]):
+            self.df = self.df.filter(self.df.lang.isin(self.selected_langs))
         if(self.repartation_lang_count>0):
             self.df = self.df.repartition(self.repartation_lang_count)
     def do_sentence_piece(self):
@@ -255,9 +294,44 @@ class Pipeline:
         )
 
     def do_pp_bucket(self):
-        self.df = self.df.withColumn(
-            "bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs)))
-        )
+        # self.df = self.df.withColumn(
+        #     "bucket", doPPBucket("perplexity", "lang", F.lit(str(self.cutoffs)))
+        # )
+        # 初始化条件
+        conditions = []
+
+        # 为每个语言的cutoffs添加条件
+        for lang, (pp_head, pp_tail) in self.cutoffs.items():
+            conditions.append(
+                ((col("lang") == lang) & (col("perplexity") < pp_head), "head")
+            )
+            conditions.append(
+                ((col("lang") == lang) & (col("perplexity") >= pp_head) & (col("perplexity") < pp_tail), "middle")
+            )
+            conditions.append(
+                ((col("lang") == lang) & (col("perplexity") >= pp_tail), "tail")
+            )
+
+        # 添加默认条件
+        default_condition = (col("perplexity").isNull()) | (col("perplexity") < 0) | (~col("lang").isin(list(self.cutoffs.keys())))
+        conditions.append((default_condition, "all"))
+        # 构建表达式
+        bucket_expr = None
+        for condition, value in conditions:
+            if bucket_expr is None:
+                bucket_expr = when(condition, value)
+            else:
+                bucket_expr = bucket_expr.when(condition, value)
+
+        # 添加默认条件
+        bucket_expr = bucket_expr.otherwise("all")
+
+        # 添加 bucket 列
+        self.df = self.df.withColumn("bucket", bucket_expr)
+       
+
+
+
 
     def drop_columns(self):
         self.df = self.df.drop("tokenized")
