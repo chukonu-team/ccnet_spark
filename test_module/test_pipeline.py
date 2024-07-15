@@ -114,6 +114,7 @@ if __name__ == "__main__":
         use_hdfs=False,
         repartation_count=32,
         repartation_lang_count=32,
+        selected_langs=["en"]
     )
 
     pipeline = Pipeline(config, spark)
