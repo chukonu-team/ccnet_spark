@@ -48,3 +48,8 @@ dl_all_lms:
 	echo "$(langs)" \
 		| tr -s ', ' '\n' | awk '{print "lang=" $$0 " dl_lm"}' \
 		| $(DISTRIBUTE) make
+### cluster:
+profile_chu:
+	bash cluster_run.sh use_chu test_module/test_cluster.py
+profile_spark:
+	bash cluster_run.sh use_spark test_module/test_cluster.py
